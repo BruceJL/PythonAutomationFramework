@@ -1,0 +1,222 @@
+alarms:
+  alarm_tank_1_pump_fault: !Alarm
+    consequences: Secondary pump will be required to maintain tank level.
+    description: Primary pump is not performing to specification.
+    more_info: null
+    off_delay: 0.0
+    on_delay: 0.0
+
+  alarm_tank_2_pump_fault: !Alarm
+    consequences: Secondary pump will be required to maintain tank level.
+    description: Primary pump is not performing to specification.
+    more_info: null
+    off_delay: 0.0
+    on_delay: 0.0
+
+points:
+  point_tank_1_liquid_level: !ProcessValue
+    alarms:
+      H1: !AlarmAnalog
+          alarm_value: 120.0
+          consequences: Secondary pump will be engaged.
+          description: high liquid level in tank
+          high_low_limit: HIGH
+          # severity: 1
+          hysteresis: 0.5
+          more_info: null
+          off_delay: 2.0
+          on_delay: 2.0
+      H2: !AlarmAnalog
+          alarm_value: 150.0
+          consequences: Tank will overflow shortly.
+          description: high liquid level in tank`
+          high_low_limit: HIGH
+          #severity: 2`
+          hysteresis: 0.5
+          more_info: null
+          off_delay: 2.0
+          on_delay: 2.0
+
+    control_points:
+        cut_in_1: !PointAnalog
+          description: Tank 1 liquid level lead pump on level
+          hmi_writeable: true
+          requestable: true
+          retentive: true
+          u_of_m: 'mm'
+          update_period: null
+          value: 80.0
+        cut_in_2: !PointAnalog
+          description: Tank 1 liquid level lag pump on level
+          hmi_writeable: true
+          requestable: true
+          retentive: true
+          u_of_m: 'mm'
+          update_period: null
+          value: 85.0
+        cut_out: !PointAnalog
+          description: Tank 1 liquid level pumps off level
+          hmi_writeable: true
+          requestable: true
+          retentive: true
+          u_of_m: 'mm'
+          update_period: null
+          value: 10.0
+    high_display_limit: 160.0
+    low_display_limit: 0.0
+    point: !PointAnalog
+      description: Tank 1 liquid level
+      hmi_writeable: false
+      requestable: false
+      retentive: false
+      u_of_m: 'mm'
+      update_period: 1.0 # seconds
+    related_points: {}
+
+  point_tank_2_liquid_level: !ProcessValue
+    alarms:
+      H1: !AlarmAnalog
+          alarm_value: 160.0
+          consequences: Secondary pump will be engaged.
+          description: high liquid level in tank
+          high_low_limit: HIGH
+          #severity: 1
+          hysteresis: 0.5
+          more_info: null
+          off_delay: 2.0
+          on_delay: 2.0
+      H2: !AlarmAnalog
+          alarm_value: 190.0
+          consequences: Tank will overflow shortly.
+          description: high liquid level in tank
+          high_low_limit: HIGH
+          #severity: 2
+          hysteresis: 0.5
+          more_info: null
+          off_delay: 2.0
+          on_delay: 2.0
+    control_points:
+        cut_in_1: !PointAnalog
+          description: Tank 2 liquid level pump on level
+          hmi_writeable: true
+          requestable: true
+          retentive: true
+          u_of_m: 'mm'
+          update_period: null
+          value: 100.0
+        cut_in_2: !PointAnalog
+          description: Tank 2 liquid level lag pump on level
+          hmi_writeable: true
+          requestable: true
+          retentive: true
+          u_of_m: 'mm'
+          update_period: null
+          value: 105.0
+        cut_out: !PointAnalog
+          description: Tank 2 liquid level pumps off level
+          hmi_writeable: true
+          requestable: true
+          retentive: true
+          u_of_m: 'mm'
+          update_period: null
+          value: 10.0
+    high_display_limit: 200.0
+    low_display_limit: 0.0
+    point: !PointAnalog
+      description: Tank 2 liquid level
+      hmi_writeable: false
+      requestable: false
+      retentive: false
+      u_of_m: 'mm'
+      update_period: 1.0 # seconds
+    related_points: {}
+
+  point_tank_1_pump_1_run: !PointDiscrete
+    description: Tank 1 primary pump
+    hmi_writeable: true
+    off_state_description: stopped
+    on_state_description: running
+    requestable: true
+    retentive: false
+    update_period: null
+
+  point_tank_1_pump_2_run: !PointDiscrete
+    description: Tank 1 backup pump
+    hmi_writeable: true
+    off_state_description: stopped
+    on_state_description: running
+    requestable: true
+    retentive: false
+    update_period: null
+
+  point_tank_2_pump_1_run: !PointDiscrete
+    description: Tank 2 primary pump
+    hmi_writeable: true
+    off_state_description: stopped
+    on_state_description: running
+    requestable: true
+    retentive: false
+    update_period: null
+
+  point_tank_2_pump_2_run: !PointDiscrete
+    description: Tank 2 backup pump
+    hmi_writeable: true
+    off_state_description: stopped
+    on_state_description: running
+    requestable: true
+    retentive: false
+    update_period: null
+
+  point_tank_1_fill_rate: !PointAnalog
+    description: Tank 1 fill rate
+    hmi_writeable: true
+    requestable: true
+    retentive: true
+    u_of_m: 'mm/min'
+    update_period: null # seconds
+    value: 20.0
+
+  point_tank_1_pump_1_drain_rate: !PointAnalog
+    description: Tank 1 primary pump drain rate
+    hmi_writeable: true
+    requestable: true
+    retentive: true
+    u_of_m: 'mm/min'
+    update_period: null # seconds
+    value: 30.0
+
+  point_tank_1_pump_2_drain_rate: !PointAnalog
+    description: Tank 1 backup pump drain rate
+    hmi_writeable: true
+    requestable: true
+    retentive: true
+    u_of_m: 'mm/min'
+    update_period: null # seconds
+    value: 30.0
+
+  point_tank_2_fill_rate: !PointAnalog
+    description: Tank 2 fill rate
+    hmi_writeable: true
+    requestable: true
+    retentive: true
+    u_of_m: 'mm/min'
+    update_period: null # seconds
+    value: 20.0
+
+  point_tank_2_pump_1_drain_rate: !PointAnalog
+    description: Tank 2 primary pump drain rate
+    hmi_writeable: true
+    requestable: true
+    retentive: true
+    u_of_m: 'mm/min'
+    update_period: null # seconds
+    value: 30.0
+
+  point_tank_2_pump_2_drain_rate: !PointAnalog
+    description: Tank 2 secondary pump drain rate
+    hmi_writeable: true
+    requestable: true
+    retentive: true
+    u_of_m: 'mm/min'
+    update_period: null # seconds
+    value: 30.0

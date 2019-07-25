@@ -1,0 +1,144 @@
+---
+loggers:
+  alarms:
+    backupCount: 1
+    file: ./logs/alarms.log
+    maxBytes: 2048000
+    level: INFO
+
+  controller:
+    backupCount: 1
+    file: ./logs/controller.log
+    maxBytes: 2048000
+    level: INFO
+
+  devices:
+    backupCount: 1
+    file: ./logs/devices.log
+    maxBytes: 2048000
+    level: INFO
+
+  supervisory:
+    backupCount: 1
+    file: ./logs/supervisory.log
+    maxBytes: 2048000
+    level: INFO
+
+# AlarmNotifiers:
+#   emailer:
+#     package: pyAutomation
+#     module: .Supervisory.AlarmEmailer
+#     logger: alarms
+#     parameters:
+#       local_hostname: mail_host
+#       mail_receivers: tank_simulator@fake.com
+#       mail_sender: noreply@fake.com
+#       mailhost: mail.fake.com
+#       mailport: 587
+
+SupervisedThreads:
+  pump_controller_1:
+    logger: controller
+    package: .
+    module: logic.PumpController
+    points:
+      point_liquid_level:
+        name: point_tank_1_liquid_level
+        access: ro
+        type: ProcessValue
+      point_run_pump_1:
+         name: point_tank_1_pump_1_run
+         access: rw
+         type: PointDiscrete
+      point_run_pump_2:
+        name: point_tank_1_pump_2_run
+        access: rw
+        type: PointDiscrete
+    alarms:
+      alarm_pump_runtime_fault:
+        name: alarm_tank_1_pump_fault
+        access: rw
+        type: Alarm
+
+  pump_controller_2:
+    logger: controller
+    package: .
+    module: logic.PumpController
+    points:
+      point_liquid_level:
+        name: point_tank_2_liquid_level
+        access: ro
+        type: ProcessValue
+      point_run_pump_1:
+         name: point_tank_2_pump_1_run
+         access: rw
+         type: PointDiscrete
+      point_run_pump_2:
+        name: point_tank_2_pump_2_run
+        access: rw
+        type: PointDiscrete
+    alarms:
+      alarm_pump_runtime_fault:
+        name: alarm_tank_2_pump_fault
+        access: rw
+        type: Alarm
+
+  tank_simulator_1:
+    logger: controller
+    package: .
+    module: logic.TankSimulator
+    points:
+      point_liquid_level:
+        name: point_tank_1_liquid_level
+        access: rw
+        type: ProcessValue
+      point_fill_rate:
+        name: point_tank_1_fill_rate
+        access: rw
+        type: PointAnalog
+      point_run_pump_1:
+         name: point_tank_1_pump_1_run
+         access: ro
+         type: PointDiscrete
+      point_run_pump_2:
+        name: point_tank_1_pump_2_run
+        access: ro
+        type: PointDiscrete
+      point_pump_1_rate_drain_rate:
+        name: point_tank_1_pump_1_drain_rate
+        access: rw
+        type: PointAnalog
+      point_pump_2_rate_drain_rate:
+        name: point_tank_1_pump_2_drain_rate
+        access: rw
+        type: PointAnalog
+
+  tank_simulator_2:
+    logger: controller
+    package: .
+    module: logic.TankSimulator
+    points:
+      point_liquid_level:
+        name: point_tank_2_liquid_level
+        access: rw
+        type: ProcessValue
+      point_fill_rate:
+        name: point_tank_2_fill_rate
+        access: rw
+        type: PointAnalog
+      point_run_pump_1:
+         name: point_tank_2_pump_1_run
+         access: ro
+         type: PointDiscrete
+      point_run_pump_2:
+        name: point_tank_2_pump_2_run
+        access: ro
+        type: PointDiscrete
+      point_pump_1_rate_drain_rate:
+        name: point_tank_2_pump_1_drain_rate
+        access: rw
+        type: PointAnalog
+      point_pump_2_rate_drain_rate:
+        name: point_tank_2_pump_2_drain_rate
+        access: rw
+        type: PointAnalog

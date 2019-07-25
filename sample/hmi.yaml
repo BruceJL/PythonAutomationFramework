@@ -1,0 +1,19 @@
+---
+tank_1:
+  name: Tank 1 Simulator Example
+  points:
+  - point_tank_1_liquid_level
+  - point_tank_1_fill_rate
+  - point_tank_1_pump_1_drain_rate
+  - point_tank_1_pump_2_drain_rate
+  - point_tank_1_pump_1_run
+  - point_tank_1_pump_2_run
+tank_2:
+  name: Tank 2 Simulator
+  points:
+    - point_tank_2_liquid_level
+    - point_tank_2_fill_rate
+    - point_tank_2_pump_1_drain_rate
+    - point_tank_2_pump_2_drain_rate
+    - point_tank_2_pump_1_run
+    - point_tank_2_pump_2_run

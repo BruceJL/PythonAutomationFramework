@@ -1,0 +1,14 @@
+Metadata-Version: 2.1
+Name: pyAutomation
+Version: 0.0.1
+Summary: A automation framework for building control and automation projects.
+Home-page: https://github.com/pypa/sampleproject
+Author: Bruce Link
+Author-email: bruce.j.e.link@gmail.com
+License: UNKNOWN
+Description: pyAutomation is a library of classes that allows for building of complex control systems. It provides both data structures and process supervision utilities.
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Description-Content-Type: text/markdown
