@@ -1,10 +1,14 @@
 from .PointAnalogReadOnlyAbstract import PointAnalogReadOnlyAbstract
 from .PointSaveable import PointSaveable
+from Supervisory.Interruptable import Interruptable
 from datetime import datetime
 from typing import List, Callable, Dict, Any
 
 
-class PointAnalogDual(PointAnalogReadOnlyAbstract, PointSaveable):
+class PointAnalogDual(
+  PointAnalogReadOnlyAbstract,
+  PointSaveable,
+  Interruptable):
 
     def __init__(
       self,
@@ -24,8 +28,8 @@ class PointAnalogDual(PointAnalogReadOnlyAbstract, PointSaveable):
 
         self.write_request = False
 
-        self._point_1.add_observer(self.name, self.update_value)
-        self._point_2.add_observer(self.name, self.update_value)
+        self._point_1.add_observer(self.name, self.interrupt)
+        self._point_2.add_observer(self.name, self.intertupt)
         super().sanity_check()
 
     # The dict property is what is used by jsonpickle to transport the object over the network.
@@ -52,7 +56,7 @@ class PointAnalogDual(PointAnalogReadOnlyAbstract, PointSaveable):
         return d
 
     # callback sent to points that feed this object.
-    def update_value(self, name: 'str'):
+    def interrupt(self, name: 'str'):
         i = 0.0
         j = 0.0
         if self._point_1.quality:

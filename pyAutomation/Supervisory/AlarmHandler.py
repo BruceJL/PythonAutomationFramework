@@ -46,14 +46,14 @@ class AlarmHandler(SupervisedThread):
         # as little as possible.
         with self.active_alarm_list_condition:
             if a not in self.active_alarm_list:
-                self.logger.info("Adding " + a.name)
+                self.logger.info("Adding " + a.name + " to active alarm list.")
                 self.active_alarm_list.append(a)
 
     def remove_active_alarm(self, a: 'Alarm') -> None:
-            # This method will be called by the program logic so it must block
+        # This method will be called by the program logic so it must block
         # as little as possible.
         with self.active_alarm_list_condition:
-            self.logger.info("Removing " + a.name)
+            self.logger.info("Removing " + a.name + " from active alarm list.")
             self.active_alarm_list.remove(a)
 
         self.logger.info("Active alarm list contains:")
@@ -67,7 +67,7 @@ class AlarmHandler(SupervisedThread):
             self.active_alarm_timer_list.append(a)
 
         # queue a run of the loop.
-        self.interrupt(name=self.name)
+        self.interrupt(name=self.name + ": add alarm timer.")
 
     def remove_alarm_timer(self, a: 'Alarm') -> None:
         # This method will be called by the program logic so it must block
@@ -76,7 +76,7 @@ class AlarmHandler(SupervisedThread):
             self.active_alarm_timer_remove_list.append(a)
 
         # queue a run of the loop.
-        self.interrupt(name=self.name)
+        self.interrupt(name=self.name + ": remove alarm timer.")
 
     def count_alarm_timer_list(self) -> int:
         with self.alarm_timer_list_add_condition:

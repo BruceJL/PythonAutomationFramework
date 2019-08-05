@@ -6,9 +6,10 @@ from collections import deque
 from abc import ABC, abstractmethod
 from typing import Dict, Any
 import logging
+from pyAutomation.Supervisory.Interruptable import Interruptable
 
 
-class SupervisedThread(ABC):
+class SupervisedThread(Interruptable, ABC):
 
     def __init__(self, name: str, loop, period, logger: str) -> None:
         self._name = name
@@ -89,7 +90,7 @@ class SupervisedThread(ABC):
 
     def thread_loop(self, loop, ):
         try:
-            self.logger.info("Starting Logic: " + self.name)
+            self.logger.info("Starting thread_loop for: " + self.name)
             self.condition.acquire()
 
             self.default_next_run_time = datetime.datetime.now()

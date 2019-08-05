@@ -62,7 +62,7 @@ class SupervisedThread(ABC):
 
     def thread_loop(self, loop, ):
         try:
-            self.logger.info("Starting Logic: " + self.name)
+            self.logger.info("Starting thread loop: " + self.name)
             self.condition.acquire()
 
             self.default_next_run_time = datetime.datetime.now()
@@ -130,5 +130,3 @@ class SupervisedThread(ABC):
             terminated=self.terminated)
 
     __dict__ = property(_get__dict__)
-
-

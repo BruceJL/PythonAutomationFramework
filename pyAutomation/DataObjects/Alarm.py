@@ -4,6 +4,7 @@ Created on Apr 16, 2016
 @author: Bruce
 """
 import datetime
+import dateutil.parser
 import logging
 import smtplib
 import time
@@ -17,12 +18,13 @@ logger = logging.getLogger('alarms')
 
 global_alarms = {}  # type: Dict['str', 'Alarm']
 
+# notifiers are global alarm watchers for all alarms. They are used for
+# logging and remote alarm notification (e.g. email).
 alarm_notifiers = [] # type: List[Callable[[str], None]]
 
 class Alarm(object):
 
     keywords = [
-       # 'name',
       'description',
       'on_delay',
       'off_delay',
@@ -69,11 +71,11 @@ class Alarm(object):
         # Additional info for this alarm
         self.more_info = "None"  # type: str
 
-        self._activation_time = None  # type: datetime.datetime
+        self._activation_time = datetime.datetime.now(datetime.timezone.utc)  # type: datetime.datetime
         # The time that the alarm was put into ALARM
 
         # The time that the alarm was reset
-        self._is_reset_time = None  # type: datetime.datetime
+        self._is_reset_time = datetime.datetime.now(datetime.timezone.utc)  # type: datetime.datetime
 
         # The current state of the alarm.
         self._state = "OFF"  # type: str
@@ -102,23 +104,40 @@ class Alarm(object):
     def config(self, n: 'str') -> 'None':
         self._name = n
 
-    # The dict property is used to wrap up the object for transport over JSON.
-    def _get__dict__(self) -> 'Dict[str, Any]':
-        return dict(
-          name=self.name,
+    # Used to jsonpickle the object for network transport.
+    def __getstate__(self) -> 'Dict[str, Any]':
+        d= dict(
+          name=self._name,
           description=self.description,
-          _input=self._input,
+          #_input=self._input,
           blocked=self.blocked,
           acknowledged=self.acknowledged,
           enabled=self.enabled,
           consequences=self.consequences,
           more_info=self.more_info,
-          _state=self._state,
-          _timer=self._timer,
+          state=self._state,
+          timer=self._timer,
           on_delay=self.on_delay,
           off_delay=self.off_delay,
-          _activation_time=self._activation_time,
-          _is_reset_time=self._is_reset_time)
+          activation_time=self._activation_time.isoformat(),
+          is_reset_time=self._is_reset_time.isoformat(),
+        )
+        return d
+
+    def __setstate__(self, d) -> 'None':
+        self._name        = d['name']
+        self.description  = d['description']
+        self.blocked      = d['blocked']
+        self.acknowledged = d['acknowledged']
+        self.enabled      = d['enabled']
+        self.consequences = d['consequences']
+        self.more_info    = d['more_info']
+        self._state       = d['state']
+        self._timer       = d['timer']
+        self.on_delay     = d['on_delay']
+        self.off_delay    = d['off_delay']
+        self._activation_time = dateutil.parser.parse(d['activation_time'])
+        self._is_reset_time   = dateutil.parser.parse(d['is_reset_time'])
 
     def _get_yaml_dict(self) -> 'Dict[str, Any]':
         return dict(
@@ -128,8 +147,6 @@ class Alarm(object):
           on_delay=self.on_delay,
           off_delay=self.off_delay,
         )
-
-    __dict__ = property(_get__dict__)
 
     def _get_name(self):
         assert self._name is not None, \
@@ -219,11 +236,11 @@ class Alarm(object):
             if self.input and self.enabled:
                 if self.on_delay > 0.0:
                     self._state = "ON_DELAY"
-                    logger.debug("Alarm " + self.name + " OFF->ON_DELAY")
+                    logger.debug("Alarm: " + self.name + " OFF->ON_DELAY")
                     self._timer = time.monotonic()
                     Alarm.alarm_handler.add_alarm_timer(self)
                 else:
-                    logger.info("Alarm " + self.name + " OFF->ALARM")
+                    logger.info("Alarm: " + self.name + " OFF->ALARM")
                     self._state = "NEW_ALARM"
 
         # ON_DELAY is used to prevent an alarm from latching in too quickly. This is
@@ -232,11 +249,11 @@ class Alarm(object):
             if not self.input or not self.enabled:
                 self._state = "OFF"
                 Alarm.alarm_handler.remove_alarm_timer(self)
-                logger.debug("Alarm " + self.name + " ON_DELAY->OFF")
+                logger.debug("Alarm: " + self.name + " ON_DELAY->OFF")
             elif time.monotonic() - self._timer >= self.on_delay:
                 self._state = "NEW_ALARM"
                 Alarm.alarm_handler.remove_alarm_timer(self)
-                logger.info("Alarm " + self.name + " ON_DELAY->ALARM")
+                logger.info("Alarm: " + self.name + " ON_DELAY->ALARM")
 
         # NEW_ALARM is a transitory state, setup is done and then the alarm immediatly
         # changes to the ALARM state.
@@ -247,7 +264,7 @@ class Alarm(object):
                 self.acknowledged = False
 
             Alarm.alarm_handler.add_active_alarm(self)
-            self._activation_time = datetime.datetime.now()
+            self._activation_time = datetime.datetime.now(datetime.timezone.utc)
 
             # fire off any remote notification if any
             for notifier in alarm_notifiers:
@@ -260,10 +277,10 @@ class Alarm(object):
                     self._state = "OFF_DELAY"
                     self._timer = time.monotonic()
                     Alarm.alarm_handler.add_alarm_timer(self)
-                    logger.debug("Alarm " + self.name + " ALARM->OFF_DELAY")
+                    logger.debug("Alarm: " + self.name + " ALARM->OFF_DELAY")
                 else:
                     self._state = "ALARM_RESET"
-                    logger.info("Alarm " + self.name + " ALARM->OFF")
+                    logger.info("Alarm: " + self.name + " ALARM->OFF")
 
                     # fire off any remote notification if any
                     for notifier in alarm_notifiers:
@@ -275,11 +292,11 @@ class Alarm(object):
             if self.input and self.enabled:
                 self._state = "ALARM"
                 Alarm.alarm_handler.remove_alarm_timer(self)
-                logger.debug("Alarm " + self.name + " OFF_DELAY->ALARM")
+                logger.debug("Alarm: " + self.name + " OFF_DELAY->ALARM")
             elif time.monotonic() - self._timer >= self.off_delay:
                 self._state = "ALARM_RESET"
                 Alarm.alarm_handler.remove_alarm_timer(self)
-                logger.info("Alarm " + self.name + " OFF_DELAY->OFF")
+                logger.info("Alarm: " + self.name + " OFF_DELAY->OFF")
 
                 # fire off any remote notification if any
                 for notifier in alarm_notifiers:
@@ -289,7 +306,7 @@ class Alarm(object):
         if self._state == "ALARM_RESET":
             notify = True
             self._state = "OFF"
-            self._is_reset_time = datetime.datetime.now()
+            self._is_reset_time = datetime.datetime.now(datetime.timezone.utc)
             if self.acknowledged:
                 Alarm.alarm_handler.remove_active_alarm(self)
 
@@ -298,18 +315,20 @@ class Alarm(object):
 
     def _notify_observers(self):
         assert self.name is not None, \
-          "alarm " + self.description + " defined without name."
-        for callback in self.observers.values():
-            callback(self.name)
+          "Alarm: " + self.description + " defined without name."
+
+        for key, callback in self._observers.items():
+            logger.debug("firing callback for " + key + " from " + self.name)
+            callback(name=self.name)
 
     def add_observer(self, name: 'str', observer: 'Callable[str, None]') -> 'None':
         self._observers.update({name: observer})
         if self._name is not None:
-            logger.info("observer: " + name + " added to point " + self.name)
+            logger.info("Observer: " + name + " added to point " + self.name)
 
     def del_observer(self, name: 'str') -> 'None':
         self._observers.pop(name)
-        logger.info("observer: " + name + " removed from point " + self.name)
+        logger.info("Observer: " + name + " removed from point " + self.name)
 
 
     def sanity_check(self):

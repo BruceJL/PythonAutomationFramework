@@ -238,7 +238,7 @@ class Point(PointAbstract, ABC):
                           self.description + " attempted callback without identifer."
 
                         for callback in self._observers.values():
-                            callback(self._writer.name + "  > " + self.name)
+                            callback(name=self._writer.name + "  > " + self.name)
 
             except AttributeError:
                 self._value = v
