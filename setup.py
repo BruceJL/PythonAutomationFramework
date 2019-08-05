@@ -13,11 +13,11 @@ setuptools.setup(
         "complex control systems. It provides data structures, process " + \
         "supervision utilities, and I/O drivers for various protocols." ,
     long_description_content_type="text/markdown",
-    url="https://github.com/BruceJL/PythonAutomationFramework",
+    url="https://github.com/BruceJL/pythonAutomationFramework",
     # packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
+        "License :: OSI Approved :: GPL v3",
         "Operating System :: OS Independent",
     ],
     packages=[
@@ -32,7 +32,7 @@ setuptools.setup(
       'bin/hmi.py',
     ],
     py_modules=[
-      "email.mime.text",
+      "email",
       "smtplib",
       "typing",
       "datetime",

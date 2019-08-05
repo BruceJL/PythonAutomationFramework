@@ -1,1 +1,7 @@
+datetime
+email
+logging
 pyAutomation
+ruamel
+smtplib
+typing
