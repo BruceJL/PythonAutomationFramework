@@ -91,6 +91,7 @@ class Alarm(object):
         self._is_reset_time = datetime.datetime.now(datetime.timezone.utc)  # type: datetime.datetime
 
         # The current state of the alarm.
+        # Valid states are: OFF, ON_DELAY, ALARM, OFF_DELAY
         self._state = "OFF"  # type: str
 
         # Current timer value.
@@ -151,14 +152,14 @@ class Alarm(object):
         return d
 
     def __setstate__(self, d) -> 'None':
-            """
-            Creates an alarm object from a dict representation. This function
-            is specified by the jsonpickle library to unpickle an object.
+        """
+        Creates an alarm object from a dict representation. This function
+        is specified by the jsonpickle library to unpickle an object.
 
-            Parameters:
-                dict: JSON dict of alarm properties.
+        Parameters:
+            dict: JSON dict of alarm properties.
 
-            """
+        """
         self._name        = d['name']
         self.description  = d['description']
         self.blocked      = d['blocked']
@@ -218,7 +219,6 @@ class Alarm(object):
         an alarm annuciator.
 
         """
-
         return "{} {} {}".format(str(self._activation_time), self.description, self.alarm_state)
 
     @property
@@ -314,7 +314,7 @@ class Alarm(object):
                     self._timer = time.monotonic()
                     Alarm.alarm_handler.add_alarm_timer(self)
                 else:
-                    logger.info("Alarm: " + self.name + " OFF->ALARM")
+                    logger.debug("Alarm: " + self.name + " OFF->ALARM")
                     self._state = "NEW_ALARM"
 
         # ON_DELAY is used to prevent an alarm from latching in too quickly.
@@ -327,7 +327,7 @@ class Alarm(object):
             elif time.monotonic() - self._timer >= self.on_delay:
                 self._state = "NEW_ALARM"
                 Alarm.alarm_handler.remove_alarm_timer(self)
-                logger.info("Alarm: " + self.name + " ON_DELAY->ALARM")
+                logger.debug("Alarm: " + self.name + " ON_DELAY->ALARM")
 
         # NEW_ALARM is a transitory state, setup is done and then the alarm
         # immediately changes to the ALARM state.
@@ -354,7 +354,7 @@ class Alarm(object):
                     logger.debug("Alarm: " + self.name + " ALARM->OFF_DELAY")
                 else:
                     self._state = "ALARM_RESET"
-                    logger.info("Alarm: " + self.name + " ALARM->OFF")
+                    logger.debug("Alarm: " + self.name + " ALARM->OFF")
 
                     # fire off any remote notification if any
                     for notifier in alarm_notifiers:
@@ -370,7 +370,7 @@ class Alarm(object):
             elif time.monotonic() - self._timer >= self.off_delay:
                 self._state = "ALARM_RESET"
                 Alarm.alarm_handler.remove_alarm_timer(self)
-                logger.info("Alarm: " + self.name + " OFF_DELAY->OFF")
+                logger.debug("Alarm: " + self.name + " OFF_DELAY->OFF")
 
                 # fire off any remote notification if any
                 for notifier in alarm_notifiers:

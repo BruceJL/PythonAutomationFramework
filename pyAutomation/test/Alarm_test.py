@@ -3,7 +3,6 @@ import jsonpickle
 import datetime
 import sys
 from time import sleep
-
 from mock import patch, Mock
 
 from pyAutomation.DataObjects.Alarm import Alarm
@@ -70,10 +69,15 @@ class TestAlarm(unittest.TestCase, Interruptable):
         self.alarm.del_observer(self.name)
 
     def test_a_json_pickle(self) -> 'None':
+        # n.b. the a in the test name is so that this test gets executed first,
+        # the Mock module doesn't seem to want to relent outside of the 'with'
+        # block.
+
         self.logger.info("----Start test_json_pickle----")
         self.logger.debug(self.alarm._activation_time.isoformat())
         pickle_text = jsonpickle.encode(self.alarm)
         unpickled_point = jsonpickle.decode(pickle_text)
+
         self.assertEqual(self.alarm.name, unpickled_point.name)
         self.assertEqual(self.alarm.description, unpickled_point.description)
         self.assertEqual(self.alarm.blocked, unpickled_point.blocked)
@@ -86,6 +90,28 @@ class TestAlarm(unittest.TestCase, Interruptable):
         self.assertEqual(self.alarm.off_delay, unpickled_point.off_delay)
         self.assertEqual(self.alarm._activation_time, unpickled_point._activation_time)
         self.assertEqual(self.alarm._is_reset_time, unpickled_point._is_reset_time)
+
+        def test_a_yaml_pickle(self):
+            # n.b. the a in the test name is so that this test gets executed first,
+            # the Mock module doesn't seem to want to relent outside of the 'with'
+            # block.
+            yml = ruamel.yaml.YAML(typ='safe', pure=True)
+            yml.default_flow_style = False
+            yml.indent(sequence=4, offset=2)
+
+            yml.register_class(AlarmAnalog)
+
+            stream = StringIO()
+            yml.dump(self.alarm, stream)
+            s=stream.getvalue()
+            unpickled_alarm = yml.load(s)
+
+            self.assertEqual(self.alarm.description, unpickled_alarm.description)
+            self.assertEqual(self.alarm.consequences, unpickled_alarm.consequences)
+            self.assertEqual(self.alarm.more_info, unpickled_alarm.more_info)
+            self.assertEqual(self.alarm.on_delay, unpickled_alarm.on_delay)
+            self.assertEqual(self.alarm.off_delay, unpickled_alarm.off_delay)
+
 
     def test_alarm_with_timer(self) -> 'None':
         self.logger.info("---- Start test_alarm_with_timer ----")

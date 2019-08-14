@@ -1,12 +1,17 @@
 import logging
 from .Alarm import Alarm
 from typing import Dict, Any
+import ruamel
 
 logger = logging.getLogger('controller')
 
 
 class AlarmAnalog(Alarm):
+    """
+    Represents an analog alarm object, it extends an alarm object but instead
+    take an analog value and compares it to a theshold to drive the alarm state.
 
+    """
     keywords = Alarm.keywords + [
         "alarm_value",
         "hysteresis",
@@ -27,17 +32,46 @@ class AlarmAnalog(Alarm):
 
         super().__init__(**kwargs)
 
-    def _get__dict__(self) -> 'Dict[str, Any]':
-        d = super().__dict__
+    def __getstate__(self) -> 'Dict[str, Any]':
+        """
+        Gets a dict representation of the alarm suitable for JSON
+        transport to an HMI client. This function is specified by the
+        jsonpickle library to pickle an object.
+
+        Returns:
+            dict: a dict of alarm properties.
+
+        """
+
+        d = super().__getstate__()
         d.update(dict(
-            alarm_value=self.alarm_value,
-            hysteresis=self.hysteresis,
-            high_low_limit=self.high_low_limit))
+          alarm_value=self.alarm_value,
+          hysteresis=self.hysteresis,
+          high_low_limit=self.high_low_limit,
+        ))
         return d
 
-    __dict__ = property(_get__dict__)
+    def __setstate__(self, d) -> 'None':
+        """
+        Creates an alarm object from a dict representation. This function
+        is specified by the jsonpickle library to unpickle an object.
+
+        Parameters:
+            dict: JSON dict of alarm properties.
+
+        """
+        super().__setstate__(d)
+        self.alarm_value    = d['alarm_value']
+        self.hysteresis     = d['hysteresis']
+        self.high_low_limit = d['high_low_limit']
 
     def _get_yaml_dict(self) -> 'Dict[str, Any]':
+        """
+        Gets a representation of this alarm suitable for storage in a yaml file.
+        YAML files are used for storing the alarm when stopping and starting then
+        process supervisor.
+
+        """
         d = super()._get_yaml_dict()
         d.update(dict(
           alarm_value=self.alarm_value,
@@ -50,7 +84,7 @@ class AlarmAnalog(Alarm):
     def human_readable_value(self) -> str:
         return str(self.alarm_value)
 
-    def evaluate_analog(self, value):
+    def evaluate_analog(self, value: 'float') -> None:
         if self.high_low_limit == "HIGH":
             if not self.input:
                 if value > self.alarm_value:
