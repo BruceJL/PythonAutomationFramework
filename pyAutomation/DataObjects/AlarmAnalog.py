@@ -18,13 +18,30 @@ class AlarmAnalog(Alarm):
         "high_low_limit"]
 
     def __init__(self, **kwargs) -> None:
+        @keyword
+        @keyword h
+        @keyword
         """
-        @keyword description: alarm description
-        @keyword on_delay: delay before alarm is raised
-        @keyword off_delay: delay before alarm is lowered
-        @keyword alarm_value: EU value that alarm is activated at
-        @keyword hysteresis: EU amount that value must leave alarm_value to lower alarm
-        @keyword high_low_limit: flag to determine if the alarm is a HIGH or LOW limit
+
+        """
+        The constructor for AlarmAnalog class.
+
+        Parameters:
+          alarm_value (float): EU value that alarm is activated at.
+          hysteresis (float: EU amount that value must leave alarm_value to
+            lower the alarm.
+          high_low_limit (str LOW/HIGH): flag to determine if the alarm is a
+            HIGH or LOW limit.
+          description (str): A human readable string  detailing the alarm
+            condition.
+          on_delay (float): The time in seconds that the alarm input must
+            be active, before it is considered to be a valid alarm.
+          off_delay (float): The time in seconds that the alarm must be
+            inactive, before it is considered to be a reset alarm.
+          consequences (str): The consequences of not responding to this
+            alarm in a timely manner.
+          more_info (str): Additional information helpful in rectifing the
+            alarm condition (e.g. links to: drawings, manuals, or procedures)
         """
         self.alarm_value = 0.0
         self.hysteresis = 0.0
