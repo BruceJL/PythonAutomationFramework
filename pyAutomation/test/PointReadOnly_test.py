@@ -1,5 +1,7 @@
 import unittest
 from DataObjects.PointAnalog import PointAnalog
+from DataObjects.PointEnumeration import PointEnumeration
+from DataObjects.PointDiscrete import PointDiscrete
 from DataObjects.PointReadOnly import PointReadOnly
 import jsonpickle
 import datetime
@@ -7,22 +9,49 @@ import datetime
 
 class TestPointReadOnly(unittest.TestCase):
 
-    def setUp(self):
-        point_analog = PointAnalog(
-            name="temperature_1",
-            description="Temperature reading 1 (pressure sensor)",
-            u_of_m="ºC",
-            hmi_writeable=False,
-            # deadband=0.5,
-            update_period=datetime.timedelta(seconds=1.0))
+    @classmethod
+    def setUpClass(self):
+        self.point_analog = PointAnalog(
+          description   = "Temperature reading",
+          u_of_m        = "ºC",
+          hmi_writeable = False,
+          retentive     = True,
+          update_period = 1.0,
+        )
 
-        self.point = PointReadOnly(point_analog)
+        self.point_analog.config("temp_1")
 
-    def test_json_pickle(self):
+        self.point_discrete= PointDiscrete(
+          description="run cooling",
+          hmi_writeable=False,
+        )
+        self.point_discrete.config("run_cooling")
+
+        self.point_enumeration=PointEnumeration(
+          description="System mode",
+          states=["Hand", "Off", "Auto"],
+          hmi_writeable=False,
+        )
+        self.point_enumeration.config("system_mode")
+
+
+    def test_json_pickle_analog(self):
+        self.point = PointReadOnly(self.point_analog)
         pickle_text = jsonpickle.encode(self.point)
         unpickled_point = jsonpickle.decode(pickle_text)
-        self.assertEqual(self.point.__dict__, unpickled_point.__dict__)
+        self.assertEqual(self.point.name, unpickled_point.name)
 
+    def test_json_pickle_discrete(self):
+        self.point = PointReadOnly(self.point_discrete)
+        pickle_text = jsonpickle.encode(self.point)
+        unpickled_point = jsonpickle.decode(pickle_text)
+        self.assertEqual(self.point.name, unpickled_point.name)
+
+    def test_json_pickle_enumeration(self):
+        self.point = PointReadOnly(self.point_enumeration)
+        pickle_text = jsonpickle.encode(self.point)
+        unpickled_point = jsonpickle.decode(pickle_text)
+        self.assertEqual(self.point.name, unpickled_point.name)
 
 if __name__ == '__main__':
     unittest.main()

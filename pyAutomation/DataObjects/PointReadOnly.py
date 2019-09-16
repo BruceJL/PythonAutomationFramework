@@ -1,20 +1,23 @@
 from .PointReadOnlyAbstract import PointReadOnlyAbstract
-from .PointSaveable import PointSaveable
 from typing import Dict, Any
 from datetime import datetime
 from typing import Callable, List
 
 
-class PointReadOnly(PointReadOnlyAbstract, PointSaveable):
+class PointReadOnly(PointReadOnlyAbstract):
 
     def __init__(self, point: PointReadOnlyAbstract) -> None:
         self._point = point
 
-    def _get__dict__(self) -> 'Dict[str, Any]':
-        d = dict(_point=self._point)
+    def __getstate__(self) -> 'Dict[str, Any]':
+        d = dict(point=self._point)
         return d
 
-    __dict__ = property(_get__dict__)
+    def __setstate__(self, d: 'Dict[str, Any]') -> None:
+        self._point = d['point']
+
+    def config(self, s: 'str') -> None:
+        pass
 
     def _get_name(self) -> str:
         return self._point.name
@@ -84,14 +87,17 @@ class PointReadOnly(PointReadOnlyAbstract, PointSaveable):
 
     hmi_object_name = property(_get_hmi_object_name)
 
+    # Get an object suitable for storage in a yaml file.
+    def _get_yamlable_object(self) -> 'PointAbstract':
+        return self._point.yamlable_object
+
+    yamlable_object = property(_get_yamlable_object)
+
     def get_readonly_object(self) -> 'PointReadOnlyAbstract':
         return self
 
     def get_readwrite_object(self) -> 'PointAbstract':
         return self._point.get_readwrite_object()
-
-    def get_yaml_object(self) -> 'PointAbstract':
-        return self._point.get_yaml_object()
 
     @property
     def editable_value(self) -> 'str':

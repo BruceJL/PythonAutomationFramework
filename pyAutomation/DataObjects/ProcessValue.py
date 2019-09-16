@@ -5,7 +5,6 @@ Created on Apr 16, 2016
 """
 import logging
 from .PointAnalogReadOnlyAbstract import PointAnalogReadOnlyAbstract
-from .PointSaveable import PointSaveable
 from typing import Dict, TYPE_CHECKING, Any
 from ruamel import yaml
 
@@ -40,6 +39,9 @@ class ProcessValue(PointAnalogReadOnlyAbstract):
 
         super().__init__()
 
+        assert point_analog is not None,\
+          "ProcessValue instanciated with null point."
+
         self._point = point_analog.get_readonly_object()
         point_analog.add_observer("ProcessValue", self.point_updated)
 
@@ -61,59 +63,6 @@ class ProcessValue(PointAnalogReadOnlyAbstract):
         for k, o in self.alarms.items():
             o.config(n + ".alarms." + k)
 
-    # The dict property is what is used by jsonpickle to transport the object
-    # over the network.
-    def _get__dict__(self) -> 'Dict[str, Any]':
-        d = dict(
-          _point=self._point,
-          high_display_limit=self.high_display_limit,
-          low_display_limit=self.low_display_limit,
-          control_points=self.control_points,
-          alarms=self.alarms,
-          related_points=self.related_points)
-
-        return d
-
-    __dict__ = property(_get__dict__)
-
-    # yaml dumping function
-    def _get_yaml_dict(self) -> 'Dict[str, Any]':
-        cps = {}
-        if self.control_points is not None:
-            for k in self.control_points:
-                cps[k] = self.control_points[k]
-
-        alms = {}
-        if self.alarms is not None:
-            for k in self.alarms:
-                alms[k] = self.alarms[k]
-
-        rps = {}
-        if self.related_points is not None:
-            for k in self.related_points:
-                rps[k] = self.related_points[k]
-
-        d = dict(
-           point=self._point.get_yaml_object(),
-           high_display_limit=self.high_display_limit,
-           low_display_limit=self.low_display_limit,
-           control_points=cps,
-           alarms=alms,
-           related_points=rps
-        )
-        return d
-
-    def _get_config_dict(self) -> 'Dict[str, Any]':
-        return dict(
-          point=self._point,
-          high_display_limit=self.high_display_limit,
-          low_display_limit=self.low_display_limit,
-          control_points=self.control_points,
-          alarms=self.alarms,
-          related_points=self.related_points
-        )
-
-
     # methods to add alarms and points.
     def add_alarm(self, name, alarm_analog):
         self.alarms[name] = alarm_analog
@@ -125,7 +74,6 @@ class ProcessValue(PointAnalogReadOnlyAbstract):
         # self.control_points_list.append(point)
 
     def add_related_point(self, n, point):
-        point.name = self.name + "."  + n
         self.related_points[n] = point
         # self.related_points_list.append(point)
 
@@ -244,8 +192,53 @@ class ProcessValue(PointAnalogReadOnlyAbstract):
     def get_readwrite_object(self) -> 'PointAnalog':
         return self._point.get_readwrite_object()
 
-    def get_yaml_object(self) -> 'ProcessValue':
-        return self
+    # values for live object data for transport over JSON.
+    def __getstate__(self) -> 'Dict[str, Any]':
+        d = {
+          'point': self._point,
+          'high_display_limit': self.high_display_limit,
+          'low_display_limit': self.low_display_limit,
+          'control_points': self.control_points,
+          'alarms': self.alarms,
+          'related_points': self.related_points,
+        }
+        return d
+
+    def __setstate__(self, d: 'Dict[str, Any]') -> 'None':
+        self._point = d['point']
+        self.high_display_limit = d['high_display_limit']
+        self.low_display_limit = d['low_display_limit']
+        self.control_points = d['control_points']
+        self.alarms = d['alarms']
+        self.related_points = d['related_points']
+
+
+    # yaml dumping function
+    def _get_yaml_dict(self) -> 'Dict[str, Any]':
+        cps = {}
+        if self.control_points is not None:
+            for k in self.control_points:
+                cps[k] = self.control_points[k]
+
+        alms = {}
+        if self.alarms is not None:
+            for k in self.alarms:
+                alms[k] = self.alarms[k]
+
+        rps = {}
+        if self.related_points is not None:
+            for k in self.related_points:
+                rps[k] = self.related_points[k]
+
+        d = {
+           'point': self._point.yamlable_object,
+           'high_display_limit': self.high_display_limit,
+           'low_display_limit': self.low_display_limit,
+           'control_points': cps,
+           'alarms': alms,
+           'related_points': rps,
+        }
+        return d
 
     # used to produce a yaml representation for config storage.
     @classmethod
@@ -270,6 +263,9 @@ class ProcessValue(PointAnalogReadOnlyAbstract):
         # needed by some YAML docs. – Anthon May 5 '17 at 20:20
 
         value = constructor.construct_mapping(node, deep=True)
+        assert value['point'] is not None, \
+          "ProcessValue created from yaml without associated point object for " + str(value)
+
         p = ProcessValue(value['point'])
         p.high_display_limit = value['high_display_limit']
         p.low_display_limit = value['low_display_limit']

@@ -123,75 +123,6 @@ class Alarm(object):
         """
         self._name = n
 
-    def __getstate__(self) -> 'Dict[str, Any]':
-        """
-        Gets a dict representation of the alarm suitable for JSON
-        transport to an HMI client. This function is specified by the
-        jsonpickle library to pickle an object.
-
-        Returns:
-            dict: a dict of alarm properties.
-
-        """
-        d= dict(
-          name=self._name,
-          description=self.description,
-          #_input=self._input,
-          blocked=self.blocked,
-          acknowledged=self.acknowledged,
-          enabled=self.enabled,
-          consequences=self.consequences,
-          more_info=self.more_info,
-          state=self._state,
-          timer=self._timer,
-          on_delay=self.on_delay,
-          off_delay=self.off_delay,
-          activation_time=self._activation_time.isoformat(),
-          is_reset_time=self._is_reset_time.isoformat(),
-        )
-        return d
-
-    def __setstate__(self, d) -> 'None':
-        """
-        Creates an alarm object from a dict representation. This function
-        is specified by the jsonpickle library to unpickle an object.
-
-        Parameters:
-            dict: JSON dict of alarm properties.
-
-        """
-        self._name        = d['name']
-        self.description  = d['description']
-        self.blocked      = d['blocked']
-        self.acknowledged = d['acknowledged']
-        self.enabled      = d['enabled']
-        self.consequences = d['consequences']
-        self.more_info    = d['more_info']
-        self._state       = d['state']
-        self._timer       = d['timer']
-        self.on_delay     = d['on_delay']
-        self.off_delay    = d['off_delay']
-        self._activation_time = dateutil.parser.parse(d['activation_time'])
-        self._is_reset_time   = dateutil.parser.parse(d['is_reset_time'])
-
-    def _get_yaml_dict(self) -> 'Dict[str, Any]':
-        """
-        Creates a dict representation of the object suitable for YAML storage in
-        a configuration file.
-
-        Returns:
-            dict: a dict of alarm properties.
-
-        """
-
-        return dict(
-          description=self.description,
-          consequences=self.consequences,
-          more_info=self.more_info,
-          on_delay=self.on_delay,
-          off_delay=self.off_delay,
-        )
-
     def _get_name(self):
         """ Returns the name of the object with some error checking. """
         assert self._name is not None, \
@@ -472,6 +403,74 @@ class Alarm(object):
 
         """
         return "AlarmWindow"
+
+    def __getstate__(self) -> 'Dict[str, Any]':
+        """
+        Gets a dict representation of the alarm suitable for JSON
+        transport to an HMI client. This function is specified by the
+        jsonpickle library to pickle an object.
+
+        Returns:
+            dict: a dict of alarm properties.
+
+        """
+        d= dict(
+          name=self._name,
+          description=self.description,
+          #_input=self._input,
+          blocked=self.blocked,
+          acknowledged=self.acknowledged,
+          enabled=self.enabled,
+          consequences=self.consequences,
+          more_info=self.more_info,
+          state=self._state,
+          timer=self._timer,
+          on_delay=self.on_delay,
+          off_delay=self.off_delay,
+          activation_time=self._activation_time.isoformat(),
+          is_reset_time=self._is_reset_time.isoformat(),
+        )
+        return d
+
+    def __setstate__(self, d) -> 'None':
+        """
+        Creates an alarm object from a dict representation. This function
+        is specified by the jsonpickle library to unpickle an object.
+
+        Parameters:
+            dict: JSON dict of alarm properties.
+
+        """
+        self._name        = d['name']
+        self.description  = d['description']
+        self.blocked      = d['blocked']
+        self.acknowledged = d['acknowledged']
+        self.enabled      = d['enabled']
+        self.consequences = d['consequences']
+        self.more_info    = d['more_info']
+        self._state       = d['state']
+        self._timer       = d['timer']
+        self.on_delay     = d['on_delay']
+        self.off_delay    = d['off_delay']
+        self._activation_time = dateutil.parser.parse(d['activation_time'])
+        self._is_reset_time   = dateutil.parser.parse(d['is_reset_time'])
+
+    def _get_yaml_dict(self) -> 'Dict[str, Any]':
+        """
+        Creates a dict representation of the object suitable for YAML storage in
+        a configuration file.
+
+        Returns:
+            dict: a dict of alarm properties.
+
+        """
+        return dict(
+          description=self.description,
+          consequences=self.consequences,
+          more_info=self.more_info,
+          on_delay=self.on_delay,
+          off_delay=self.off_delay,
+        )
 
     # used to produce a yaml representation for config storage.
     @classmethod

@@ -1,5 +1,4 @@
 from .PointAnalogAbstract import PointAnalogAbstract
-from .PointSaveable import PointSaveable
 from .PointAnalogReadOnlyAbstract import PointAnalogReadOnlyAbstract
 from .PointReadOnly import PointReadOnly
 from .Point import Point
@@ -7,7 +6,7 @@ from typing import Dict, Any, List
 from ruamel import yaml
 
 
-class PointAnalog(Point, PointAnalogAbstract, PointSaveable):
+class PointAnalog(Point, PointAnalogAbstract):
     yaml_tag = u'!PointAnalog'
 
     def _get_keywords(self) -> 'List[str]':
@@ -19,27 +18,6 @@ class PointAnalog(Point, PointAnalogAbstract, PointSaveable):
         self.u_of_m = None  # type: str
         self._value = 0.0  # type: float
         super().__init__(**kwargs)
-
-    # YAML representation for configuration storage.
-    def _get_yaml_dict(self) -> 'Dict[str, Any]':
-        d = super()._get_yaml_dict()
-        d.update(dict(
-          u_of_m=self.u_of_m,
-        ))
-        return d
-
-    # dict object used to convert the object to JSON
-    def _get__dict__(self) -> 'Dict[str, Any]':
-        d = super().__dict__
-        d.update(dict(u_of_m=self.u_of_m))
-        return d
-
-    __dict__ = property(_get__dict__)
-
-    def _get_config_dict(self) -> 'Dict[str, Any]':
-        d = super()._get_config_dict()
-        d.update(dict(u_of_m=self._u_of_m))
-        return d
 
     # human readable value
     @property
@@ -85,8 +63,27 @@ class PointAnalog(Point, PointAnalogAbstract, PointSaveable):
     def get_readwrite_object(self) -> 'PointAnalog':
         return self
 
-    def get_yaml_object(self) -> 'PointAnalog':
+    # values for live object data for transport over JSON.
+    def __getstate__(self) -> 'Dict[str, Any]':
+        d = super().__getstate__()
+        d.update({'u_of_m': self.u_of_m})
+        return d
+
+    def __setstate__(self, d: 'Dict[str, Any]') -> 'None':
+        super().__setstate__(d)
+        self._u_of_m = d['u_of_m']
+
+    # Get an object suitable for storage in a yaml file.
+    def _get_yamlable_object(self) -> 'PointAbstract':
         return self
+
+    yamlable_object = property(_get_yamlable_object)
+
+    # YAML representation for configuration storage.
+    def _get_yaml_dict(self) -> 'Dict[str, Any]':
+        d = super()._get_yaml_dict()
+        d.update({'u_of_m': self.u_of_m})
+        return d
 
     # used to produce a yaml representation for config storage.
     @classmethod

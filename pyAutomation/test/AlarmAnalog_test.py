@@ -14,7 +14,7 @@ class TestAnalogAlarmAnalog(unittest.TestCase):
     def setUpClass(self):
         logger = 'controller'
         self.logger = logging.getLogger(logger)
-        self.logger.setLevel('DEBUG')
+        self.logger.setLevel('INFO')
 
         self.alarm = AlarmAnalog(
           alarm_value=30.0,
@@ -35,7 +35,7 @@ class TestAnalogAlarmAnalog(unittest.TestCase):
         )
 
         AlarmAnalog.set_alarm_handler(self.ah)
-        self.logger.info("setUpClass completed.")
+        self.logger.debug("setUpClass completed.")
 
     def test_a_json_pickle(self):
         # n.b. the a in the test name is so that this test gets executed first,

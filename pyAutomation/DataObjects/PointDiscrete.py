@@ -1,13 +1,6 @@
-"""
-Created on Apr 14, 2016
-
-@author: Bruce
-"""
-
 import logging
 
 from .Point import Point
-from .PointSaveable import PointSaveable
 from .PointReadOnlyAbstract import PointReadOnlyAbstract
 from .PointReadOnly import PointReadOnly
 from typing import List, Dict, Any
@@ -16,7 +9,7 @@ from ruamel import yaml
 logger = logging.getLogger('controller')
 
 
-class PointDiscrete(Point, PointSaveable):
+class PointDiscrete(Point):
     yaml_tag = u'!PointDiscrete'
 
     def _get_keywords(self) -> 'List[str]':
@@ -28,22 +21,6 @@ class PointDiscrete(Point, PointSaveable):
         self.on_state_description = "ON"
         self.off_state_description = "OFF"
         super().__init__(**kwargs)
-
-    def _get__dict__(self) -> 'Dict[str, Any]':
-        d = super().__dict__
-        d.update(dict(on_state_description=self.on_state_description,
-                      off_state_description=self.off_state_description))
-        return d
-
-    __dict__ = property(_get__dict__)
-
-    def _get_yaml_dict(self) -> 'Dict[str, Any]':
-        d = super()._get_yaml_dict()
-        d.update(dict(
-          on_state_description=self.on_state_description,
-          off_state_description=self.off_state_description,
-        ))
-        return d
 
     # value accessed through HMI
     def _get_hmi_value(self) -> str:
@@ -88,8 +65,33 @@ class PointDiscrete(Point, PointSaveable):
     def get_readwrite_object(self) -> 'PointDiscrete':
         return self
 
-    def get_yaml_object(self) -> 'PointDiscrete':
+    # values for live object data for transport over JSON.
+    def __getstate__(self) -> 'Dict[str, Any]':
+        d = super().__getstate__()
+        d.update({
+          'on_state_description': self.on_state_description,
+          'off_state_description': self.off_state_description,
+        })
+        return d
+
+    def __setstate__(self, d: 'Dict[str, Any]') -> 'None':
+        super().__setstate__(d)
+        self.on_state_description = d['on_state_description']
+        self.off_state_description = d['off_state_description']
+
+    # Get an object suitable for storage in a yaml file.
+    def _get_yamlable_object(self) -> 'PointAbstract':
         return self
+
+    yamlable_object = property(_get_yamlable_object)
+
+    def _get_yaml_dict(self) -> 'Dict[str, Any]':
+        d = super()._get_yaml_dict()
+        d.update({
+          'on_state_description': self.on_state_description,
+          'off_state_description': self.off_state_description,
+        })
+        return d
 
     # used to produce a yaml representation for config storage.
     @classmethod

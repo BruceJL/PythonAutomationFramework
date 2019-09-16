@@ -99,14 +99,14 @@ class Point(PointAbstract, ABC):
             s = kwargs['update_period']
             if s is not None:
                 assert isinstance(s, float),\
-                  "invalid update period supplied for " + kwargs['description']
+                  "invalid update period: " + str(s) + " supplied for " + kwargs['description']
                 t = timedelta(seconds=s)
                 kwargs['update_period'] = t
 
         for kw in kwargs:
             assert kw in self.keywords, \
-              "Cannot assign " + str(kw) \
-              + " to " + type(self) + ", property does not exist"
+              "Cannot assign property '" + str(kw) \
+              + "' to object " + type(self).__name__ + ", property does not exist"
 
             setattr(self, kw, kwargs[kw])
             # print("assinging property of " + str(kwargs[kw]) + " to " + kw)
@@ -114,43 +114,9 @@ class Point(PointAbstract, ABC):
         print(self.description + " point created.")
 
     def config(self, n: 'str') -> 'None':
-        print("point " + n + " name assigned.")
+        logger.info("point " + n + " name assigned.")
         self._name = n
-
-    # values for live object data for transport over JSON.
-    def _get__dict__(self) -> 'Dict[str, Any]':
-        return dict(
-            _name=self._name,
-            description=self.description,
-            value=self.value,
-            requestable=self.requestable,
-            # _request_value=self._request_value,
-            forced=self._forced,
-            last_update=self._last_update,
-            hmi_writeable=self.hmi_writeable,
-            _quality=self._quality,
-        )
-
-    __dict__ = property(_get__dict__)
-
-    # used to produce a yaml representation for config storage.
-    def _get_yaml_dict(self) -> 'Dict[str, Any]':
-
-        if self.update_period is not None:
-            s = str(self.update_period.total_seconds())
-        else:
-            s = None
-
-        d = dict(
-          requestable=self.requestable,
-          retentive=self.retentive,
-          hmi_writeable=self.hmi_writeable,
-          update_period=s,
-          description=self.description,
-        )
-        if self.retentive:
-            d.update(dict(value=self._value))
-        return d
+        self.sanity_check()
 
     _keywords = [
       #'name',
@@ -405,4 +371,47 @@ class Point(PointAbstract, ABC):
 
     @abstractmethod
     def data_display_width(self) -> int:
-        pass
+         raise NotImplementedError("Not implemented")
+
+    # values for live object data for transport over JSON.
+    def __getstate__(self) -> 'Dict[str, Any]':
+        return dict(
+            name=self._name,
+            description=self.description,
+            value=self._value,
+            requestable=self.requestable,
+            # _request_value=self._request_value,
+            forced=self._forced,
+            last_update=self._last_update,
+            hmi_writeable=self.hmi_writeable,
+            quality=self._quality,
+        )
+
+    def __setstate__(self, d: 'Dict[str, Any]') -> 'None':
+        self._name = d['name']
+        self.description = d['description']
+        self._value = d['value']
+        self.requestable = d['requestable']
+        self._forced = d['forced']
+        self._last_update = d['last_update']
+        self.hmi_writeable = d['hmi_writeable']
+        self._quality = d['quality']
+
+    # used to produce a yaml representation for config storage.
+    def _get_yaml_dict(self) -> 'Dict[str, Any]':
+
+        if self.update_period is not None:
+            s = self.update_period.total_seconds()
+        else:
+            s = None
+
+        d = dict(
+          requestable=self.requestable,
+          retentive=self.retentive,
+          hmi_writeable=self.hmi_writeable,
+          update_period=s,
+          description=self.description,
+        )
+        if self.retentive:
+            d.update(dict(value=self._value))
+        return d

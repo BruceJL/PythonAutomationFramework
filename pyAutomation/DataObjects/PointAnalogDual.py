@@ -1,59 +1,36 @@
 from .PointAnalogReadOnlyAbstract import PointAnalogReadOnlyAbstract
-from .PointSaveable import PointSaveable
-from Supervisory.Interruptable import Interruptable
+from pyAutomation.Supervisory.Interruptable import Interruptable
 from datetime import datetime
 from typing import List, Callable, Dict, Any
 
 
 class PointAnalogDual(
   PointAnalogReadOnlyAbstract,
-  PointSaveable,
   Interruptable):
 
     def __init__(
       self,
-      name: str,
       point_1: PointAnalogReadOnlyAbstract,
       point_2: PointAnalogReadOnlyAbstract,
-      description: str) -> None:
+      description: str
+    ) -> 'None':
 
-        self._name = name
+        self._name = None
         self._point_1 = point_1
         self._point_2 = point_2
         self._value = 0.0  # type: float
         self._quality = False
         self._description = description
         self._last_update = datetime.now()
-        self._observers = []  # type: List[Callable[[str], None]]
+        self._observers = {}  # type: Dict[Callable[[str], None]]
 
         self.write_request = False
 
+    def config(self, n: 'str') -> 'None':
+        self._name = n
         self._point_1.add_observer(self.name, self.interrupt)
-        self._point_2.add_observer(self.name, self.intertupt)
+        self._point_2.add_observer(self.name, self.interrupt)
         super().sanity_check()
-
-    # The dict property is what is used by jsonpickle to transport the object over the network.
-    def _get__dict__(self) -> 'Dict[str, Any]':
-        d = dict(
-          _name=self._name,
-          _value=self._value,
-          _point_1=self._point_1.get_yaml_object(),
-          _point_2=self._point_2.get_yaml_object(),
-          _description=self._description,
-          _quality=self._quality)
-        return d
-
-    __dict__ = property(_get__dict__)
-
-    # YAML representation for configuration storage.
-    def _get_yaml_dict(self) -> 'Dict[str, Any]':
-        d = dict(
-          name=self._name,
-          point_1=self._point_1,
-          point_2=self._point_2,
-          description=self._description,
-        )
-        return d
 
     # callback sent to points that feed this object.
     def interrupt(self, name: 'str'):
@@ -124,10 +101,14 @@ class PointAnalogDual(
 
     quality = property(_get_quality)
 
-    def _get_observers(self):
-        return self._observers
+    def add_observer(self, name: 'str', observer: 'Callable[str, None]') -> 'None':
+        self._observers.update({name: observer})
+        # if self._name is not None:
+            # logger.info("observer: " + name + " added to point " + self.name)
 
-    observers = property(_get_observers)
+    def del_observer(self, name: 'str') -> 'None':
+        self._observers.pop(name)
+        # logger.info("observer: " + name + " removed from point " + self.name)
 
     # Unit of measure
     def _get_u_of_m(self) -> str:
@@ -156,11 +137,45 @@ class PointAnalogDual(
     def get_readonly_object(self) -> 'PointAnalogReadOnlyAbstract':
         return self
 
-    def get_readwrite_object(self) -> 'PointAnalog':
+    def get_readwrite_object(self) -> 'PointAnalogDual':
         assert False, "Cannot get a writable object from a PointAnalogDual"
 
-    def get_yaml_object(self) -> 'PointAnalogDual':
+    # The dict property is what is used by jsonpickle to transport the object over the network.
+    def __getstate__(self) -> 'Dict[str, Any]':
+        d = {
+          'name':        self._name,
+          'value':       self._value,
+          'quality':     self._quality,
+          'description': self._description,
+          'last_update': self._last_update,
+          'point_1':     self._point_1,
+          'point_2':     self._point_2,
+        }
+        return d
+
+    def __setstate__(self, d: 'Dict[str, Any]') -> 'None':
+        self._name        = d['name']
+        self._value       = d['value']
+        self._description = d['description']
+        self._last_update = d['last_update']
+        self._quality     = d['quality']
+        self._point_1     = d['point_1']
+        self._point_2     = d['point_2']
+
+    # Get an object suitable for storage in a yaml file.
+    def _get_yamlable_object(self) -> 'PointAbstract':
         return self
+
+    yamlable_object = property(_get_yamlable_object)
+
+    # YAML representation for configuration storage.
+    def _get_yaml_dict(self) -> 'Dict[str, Any]':
+        d = {
+          'point_1':     self._point_1.yamlable_object,
+          'point_2':     self._point_2.yamlable_object,
+          'description': self._description,
+        }
+        return d
 
     # used to produce a yaml representation for config storage.
     @classmethod
@@ -173,4 +188,10 @@ class PointAnalogDual(
     def from_yaml(cls, constructor, node):
         value = constructor.construct_mapping(node, deep=True)
 
-        return PointAnalogDual(**value)
+        p =  PointAnalogDual(
+          description = value['description'],
+          point_1     = value['point_1'],
+          point_2     = value['point_2'],
+        )
+
+        return p
