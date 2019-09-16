@@ -57,7 +57,7 @@ class TestPointAnalogDual(unittest.TestCase):
         stream = StringIO()
         yml.dump(self.point, stream)
         s=stream.getvalue()
-        print(s)
+        # print(s)
         unpickled_point = yml.load(s)
         unpickled_point.config("Temperature reading")
 
