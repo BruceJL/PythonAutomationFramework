@@ -7,6 +7,7 @@ sys.path.insert(0, os.getcwd())
 import logging
 from logging.handlers import RotatingFileHandler
 import signal
+import argparse
 
 import inspect
 import threading
@@ -32,20 +33,23 @@ logger_supervisory = None
 
 class Supervisor(object):
 
-    def __init__(self, logic: str, point_database: str) -> None:
+    def __init__(self, logic: 'List[str]', point_database: 'List[str]') -> None:
 
         #load the point database.
 
         self.threads = []  # type: List[SupervisedThread]
-        PointManager().load_points(point_database)
+
+        for p in point_database:
+            PointManager().load_points(p)
 
         yml = ruamel.yaml.YAML(typ='safe', pure=True)
         yml.default_flow_style = False
         yml.indent(sequence=4, offset=2)
 
         # open the supplied logic yaml file.
-        with open(logic, 'r') as ymlfile:
-            cfg = yml.load(ymlfile)
+        for f in logic:
+            with open(f, 'r') as ymlfile:
+                cfg = yml.load(ymlfile)
 
         # Import all the loggers
         section = "loggers"
@@ -213,8 +217,34 @@ class Supervisor(object):
 
         self.rpc_server.close()
 
+
+parser = argparse.ArgumentParser(description='Start the pyAutomation system.')
+
+parser.add_argument(
+  '-p', '--points',
+  type=str,
+  action='store',
+  default='points.yaml',
+  nargs='+',
+  help='yaml file(s) containing the points database for this system.',
+)
+
+parser.add_argument(
+  '-l', '--logic',
+  type=str,
+  action='store',
+  default='logic.yaml',
+  nargs='+',
+  help='yaml files(s) containing the logic instances to be created for this system.',
+)
+
+args = parser.parse_args()
+
 # run the supervisor.
-s = Supervisor(logic=sys.argv[1], point_database = sys.argv[2])
+s = Supervisor(
+  logic = args.logic,
+  point_database = args.points
+)
 
 
 # catch TERM and INT signals to cleanly stop the system.

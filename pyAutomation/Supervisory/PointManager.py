@@ -44,7 +44,7 @@ class PointManager:
     yml.register_class(AlarmAnalog)
 
     @staticmethod
-    def load_points(file: str):
+    def load_points(file: 'str') -> 'None':
 
         path = Path(file)
         data = None
