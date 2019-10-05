@@ -1,7 +1,7 @@
-#! /usr/bin/python3
 # This thread is the only thread allowed to write to the i2c bus.
 
-import datetime
+from datetime import datetime
+from datetime import timedelta
 import traceback
 from importlib import import_module
 import inspect
@@ -13,12 +13,12 @@ from pyAutomation.Supervisory.PointManager import PointManager
 class I2cDriver(SupervisedThread):
 
     parameters = {
-        'bus': 'int',
+      'bus': 'int',
     }
 
     def __init__(self, name, logger):
         self.devices = []
-        self.min_sleep_time = datetime.timedelta(milliseconds=10)
+        self.min_sleep_time = timedelta(milliseconds=10)
         self.bus = None
         self.period = None
         self.current_read_device = None
@@ -52,7 +52,8 @@ class I2cDriver(SupervisedThread):
                     device_instance = attribute(
                       name=device,
                       logger=config[device]["logger"],
-                      bus=int(self.bus))
+                      bus=int(self.bus)
+                    )
 
                     if 'points' in config[device]:
                         for p in config[device]["points"]:
@@ -62,7 +63,9 @@ class I2cDriver(SupervisedThread):
                                 else:
                                     db_rw = None
 
-                                self.logger.info("assigning point: " + config[device]["points"][p]["name"] + " to " + p)
+                                self.logger.info("assigning point: " + \
+                                  config[device]["points"][p]["name"] + \
+                                  " to " + p)
                                 PointManager.assign_point(
                                   target=device_instance,
                                   object_point_name=p,
@@ -86,14 +89,14 @@ class I2cDriver(SupervisedThread):
     def loop(self):
         self.logger.debug("Entering function")
 
-        now = datetime.datetime.now()
+        now = datetime.now()
         device_to_run = None
-        longest_wait_time = datetime.timedelta.min
+        longest_wait_time = timedelta.min
 
         for device in self.devices:
             if device.has_write_data:
                 # data writes get pushed to the front of the queue by 1 second.
-                i = now - device.last_io_attempt + datetime.timedelta(seconds=1)
+                i = now - device.last_io_attempt + timedelta(seconds=1)
                 if i > longest_wait_time:
                     longest_wait_time = i
                     device_to_run = device
@@ -107,9 +110,21 @@ class I2cDriver(SupervisedThread):
 
         if device_to_run is not None:
             self.logger.debug("doing I/O for " + device_to_run.name)
-
             try:
-                device_to_run.do_io()
+                device_to_run.last_io_attempt = datetime.now()
+                if not device_to_run.is_setup:
+                     device_to_run.setup()
+                if device_to_run.is_setup:
+                    if device_to_run.has_write_data:
+                        device_to_run.write_data()
+                    else:
+                        device_to_run.read_data()
+                else:
+                    # the setup failed. Cool down for a few seconds
+                    t = datetime.now() + timedelta(seconds=20.0)
+                    print(device_to_run.name + " can't be setup. Delaying "
+                      + "until " + str(t))
+                    device_to_run.delay_until = t
 
             except Exception as e:
                 self.logger.error(traceback.format_exc())
@@ -117,8 +132,8 @@ class I2cDriver(SupervisedThread):
                 self.devices.remove(device_to_run)
 
         # Figure out which device will be read next.
-        next_read_time = datetime.datetime.max  # The earliest next read time
-        longest_wait_time = datetime.timedelta.min  # the longest time that a device has been waiting.
+        next_read_time = datetime.max  # The earliest next read time
+        longest_wait_time = timedelta.min  # the longest time that a device has been waiting.
         device_next_read = None
 
         for device in self.devices:
@@ -140,13 +155,13 @@ class I2cDriver(SupervisedThread):
 
         if device_next_read is not None:
             self.current_read_device = device_next_read
-        self.logger.debug(self.current_read_device.name + " will be read at " +
-          str(next_read_time))
+        self.logger.debug(self.current_read_device.name + " will be read at "
+          + str(next_read_time))
 
-        if next_read_time != datetime.datetime.max:
-            sleep_time = next_read_time - datetime.datetime.now()
+        if next_read_time != datetime.max:
+            sleep_time = next_read_time - datetime.now()
         else:
-            sleep_time = datetime.timedelta(seconds=5)
+            sleep_time = timedelta(seconds=5)
 
         # Looks like we're all done. Check if we're done writing
         # before we go to sleep.

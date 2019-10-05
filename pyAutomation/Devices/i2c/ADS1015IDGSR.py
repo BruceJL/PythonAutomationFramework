@@ -10,10 +10,10 @@ Created on Apr 14, 2016
 import traceback
 import logging
 from typing import TYPE_CHECKING
-from .linuxi2c3 import IIC
 from pyAutomation.DataObjects.Alarm import Alarm
 from pyAutomation.Devices.i2c.i2cPrototype import i2cPrototype
 from pyAutomation.Supervisory.PointHandler import PointHandler
+from .linuxi2c3 import IIC
 
 if TYPE_CHECKING:
     from pyAutomation.DataObjects.PointAnalogScaled import PointAnalogScaled
@@ -119,12 +119,13 @@ class ADS1015IDGSR(i2cPrototype, PointHandler):
       'port_1': {'type': 'PointAnalog',   'access': 'rw'},
       'port_2': {'type': 'PointAnalog',   'access': 'rw'},
       'port_3': {'type': 'PointAnalog',   'access': 'rw'},
+
+      'alarm_comm_fail':  {'type': 'Alarm', 'access': 'rw'},
     }
 
     parameters = [
         'address',
     ]
-
 
     def __init__(self, name: str, bus: int, logger) -> None:
         self.bus = bus
@@ -138,27 +139,25 @@ class ADS1015IDGSR(i2cPrototype, PointHandler):
         self.port_2 = None
         self.port_3 = None
 
-        self.comm_fail_alarm = Alarm(
-          name="alarm_ADC_comm_fail",
-          description="Analog to Digital Converter Communications Lost",
-          on_delay=2.0,
-          off_delay=2.0,
-          consequences="Pressures cannot be measured. Pump will shutdown. " +
-            "Plants may be starved.",
-          more_info="Unable to communicate with the ADC chip.")
+        self.alarm_comm_fail = None
 
         super().__init__(
-          name = name,
-          logger = logger)
+          name=name,
+          logger=logger)
 
     def reset(self):
         return 0
 
-    def _setup(self):
+    def setup(self):
+        # Do a sanity check
+        assert self.alarm_comm_fail is not None,\
+          "Communications alarm is not configured."
+
         return True
 
     def _set_state(self, i):
-        self.logger.debug("changing state from " + str(self._state) + " to " + str(i))
+        self.logger.debug("changing state from " + str(self._state)
+          + " to " + str(i))
         self._state = i
 
     def _get_state(self):
@@ -169,12 +168,12 @@ class ADS1015IDGSR(i2cPrototype, PointHandler):
     def _get_has_write_data(self):
         return False
 
-    def _write_data(self):
+    def write_data(self):
         pass
 
     has_write_data = property(_get_has_write_data)
 
-    def _read_data(self):
+    def read_data(self):
         self.logger.debug("Entering function, state is: " + str(self._state))
         try:
             self.logger.debug("setting up IIC to " + str(self.address))
@@ -279,14 +278,14 @@ class ADS1015IDGSR(i2cPrototype, PointHandler):
                     self.port_3.value = data
                     self.state = 0
 
-            self.comm_fail_alarm.input = False
+            self.alarm_comm_fail.input = False
             self.logger.debug(
                 "ADS1015 successfully read. Next read at: "
                 + str(self.next_update))
 
         except OSError as e:
             self.logger.debug("Encounted OSError " + str(e))
-            self.comm_fail_alarm.input = True
+            self.alarm_comm_fail.input = True
             if 0 == self.state or 1 == self.state:
                 # self.point_0.quality = False
                 self.state = 2
@@ -300,13 +299,16 @@ class ADS1015IDGSR(i2cPrototype, PointHandler):
                 # self.point_3.quality = False
                 self.state = 0
 
+            self.logger.debug("Read successful. Next read at " + str(self.next_update))
+
         except Exception as e:
             self.logger.error(traceback.format_exc())
 
         finally:
-            dev.close()
-            self.logger.debug("Read successful. Next read at " + str(self.next_update))
-            if self.comm_fail_alarm.active:
+            if dev is not None:
+                dev.close()
+
+            if self.alarm_comm_fail.active:
                 if self.port_0 is not None:
                     self.port_0.quality = False
                 if self.port_1 is not None:
@@ -315,7 +317,6 @@ class ADS1015IDGSR(i2cPrototype, PointHandler):
                     self.port_2.quality = False
                 if self.port_3 is not None:
                     self.port_3.quality = False
-            return 0
 
     def _get_remaining_states(self):
         return 0

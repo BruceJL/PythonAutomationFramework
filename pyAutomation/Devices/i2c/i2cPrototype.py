@@ -17,31 +17,23 @@ class i2cPrototype(ABC):
         self.name = name
         self.logger = logging.getLogger(logger)
         self.logger.debug("created device " + self.name + " using logger " + logger)
+        self.delay_until = None
 
     @abstractmethod
-    def _read_data(self):
+    def read_data(self):
         pass
 
     @abstractmethod
-    def _write_data(self):
+    def write_data(self):
         pass
 
     @abstractmethod
-    def _setup(self):
+    def setup(self):
         pass
 
     @abstractmethod
     def config(self):
         pass
-
-    def do_io(self) -> None:
-        self.last_io_attempt = datetime.now()
-        if not self.is_setup:
-            self._setup()
-        if self.has_write_data:
-            self._write_data()
-        else:
-            self._read_data()
 
     def _get_name(self) -> str:
         return self._name
@@ -57,6 +49,12 @@ class i2cPrototype(ABC):
 
     @property
     def has_write_data(self) -> bool:
+        if self.delay_until is not None:
+            if self.delay_until < datetime.now():
+                self.delay_until = None
+            else:
+                return False
+
         if hasattr(self, '_has_write_data'):
             return self._has_write_data
         else:
@@ -64,6 +62,12 @@ class i2cPrototype(ABC):
 
     @property
     def next_update(self) -> datetime:
+        if self.delay_until is not None:
+            if self.delay_until < datetime.now():
+                self.delay_until = None
+            else:
+                return self.delay_until
+
         next_update = datetime.max
         if self.device_points is not None:
             for p in self.device_points:

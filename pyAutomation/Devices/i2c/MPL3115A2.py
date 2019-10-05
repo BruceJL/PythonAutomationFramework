@@ -56,14 +56,6 @@ class MPL3115A2(i2cPrototype, PointHandler):
         self.bus = bus   # type: IIC
         self.dev = None  # type: int
 
-        self.alarm_comm_fail = Alarm(
-            name=name + " hygrostat_comm_failure",
-            description="hygrostat communications failure",
-            on_delay=5,
-            off_delay=2,
-            consequences="No comminications with humidity sensor.",
-            more_info="System cannot measure current temperature or humidity.")
-
         super().__init__(
           name=name,
           logger=logger)
@@ -77,7 +69,7 @@ class MPL3115A2(i2cPrototype, PointHandler):
 
         # self.setup()
 
-    def _setup(self):
+    def setup(self):
         try:
             # ------------
             # bit 0 = SBYB
@@ -183,7 +175,12 @@ class MPL3115A2(i2cPrototype, PointHandler):
         except Exception as e:
             self.is_setup = False
 
-    def _read_data(self):
+        finally:
+            if self.dev is not None:
+                self.dev.close()
+            return self.is_setup
+
+    def read_data(self):
 
         try:
             drStatus= self.bus.read_byte_data(self.ADDRESS, self.REG_SENSOR_STATUS_REGISTER)
@@ -211,7 +208,7 @@ class MPL3115A2(i2cPrototype, PointHandler):
                 self.point_pressure.quality = False
                 self.point_temperature.quality = False
 
-    def _write_data(self):
+    def write_data(self):
         return 0
 
     def get_remaining_states(self):

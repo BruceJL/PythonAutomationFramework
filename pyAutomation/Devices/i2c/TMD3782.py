@@ -13,7 +13,6 @@ from pyAutomation.Supervisory.PointHandler import PointHandler
 
 from .linuxi2c3 import IIC
 from typing import List
-import logging
 
 '''
 http://ams.com/eng/content/download/496863/1433517/271695
@@ -63,6 +62,7 @@ CMD_WRITE = 0x80        # Command register address
 CMD_REPEATED_BYTE_PROTOCOL = 0x00
 CMD_AUTO_INCREMENT_PROTOCOL = 0x20
 
+
 def format_debug_data(s, data):
     return s + ''.join('{:02x} '.format(x) for x in data)
 
@@ -81,26 +81,21 @@ class TMD3782(i2cPrototype, PointHandler):
       'point_red_light_level':   {'type': 'PointAnalog', 'access': 'rw'},
       'point_green_light_level': {'type': 'PointAnalog', 'access': 'rw'},
       'point_blue_light_level':  {'type': 'PointAnalog', 'access': 'rw'},
+
+      'alarm_comm_fail': {'type': "Alarm", 'access': 'rw'},
      }
 
     parameters = {}
 
     def __init__(self, name: str, bus: int, logger: str) -> None:
         self.bus = bus
-        self.point_clear_light_level = None  # type: PointAnalogAbstract
-        self.point_red_light_level = None    # type: PointAnalogAbstract
-        self.point_green_light_level = None  # type: PointAnalogAbstract
-        self.point_blue_light_level = None   # type: PointAnalogAbstract
-        self.dev = None                      # type: int
-        self.device_points = None            # type: List[PointAnalog]
-
-        self.alarm_comm_fail = Alarm(
-          name="light_comm_failure",
-          description="light sensor communications failure",
-          on_delay=15,
-          off_delay=10,
-          consequences="Light stuck/loss alarms are unreliable",
-          more_info="System cannot verify the presence or absence of light.")
+        self.point_clear_light_level = None  # type: 'PointAnalogAbstract'
+        self.point_red_light_level = None    # type: 'PointAnalogAbstract'
+        self.point_green_light_level = None  # type: 'PointAnalogAbstract'
+        self.point_blue_light_level = None   # type: 'PointAnalogAbstract'
+        self.dev = None                      # type: 'int'
+        self.device_points = None            # type: 'List[PointAnalog]''
+        self.alarm_comm_fail = None          # type: 'Alarm'
 
         super().__init__(
           name=name,
@@ -109,7 +104,10 @@ class TMD3782(i2cPrototype, PointHandler):
     def reset(self):
         self._setup()
 
-    def _setup(self):
+    def setup(self):
+        assert self.alarm_comm_fail is not None,\
+          "Communications alarm (alarm_comm_fail) is not configured."
+
         try:
             self.dev = IIC(ADDRESS, self.bus)
 
@@ -151,13 +149,14 @@ class TMD3782(i2cPrototype, PointHandler):
         except OSError as e:
             self.logger.info("I/O fault " + str(e))
         finally:
-            self.logger.info("Device read successfully")
-            self.dev.close()
+            if self.dev is not None:
+                self.dev.close()
+            return self.is_setup
 
-    def _write_data(self):
+    def write_data(self):
         pass
 
-    def _read_data(self):
+    def read_data(self):
         if self.alarm_comm_fail.active:
             self.point_clear_light_level.quality = False
             self.point_red_light_level.quality = False
@@ -167,18 +166,17 @@ class TMD3782(i2cPrototype, PointHandler):
         try:
             self.dev = IIC(ADDRESS, self.bus)
 
-            '''
-            read 9 bytes starting at 0x13
-            0 - 0x13 - Status register
-            1 - 0x14 - Clear low byte
-            2 - 0x15 = Clear high byte
-            3 - 0x16 - Red high byte
-            4 - 0x17 - Red low byte
-            5 - 0x18 - Green low byte
-            6 - 0x19 - Green high byte
-            7 - 0x1A - blue low byte
-            8 - 0x1B - blue high byte
-            '''
+            # read 9 bytes starting at 0x13
+            # 0 - 0x13 - Status register
+            # 1 - 0x14 - Clear low byte
+            # 2 - 0x15 = Clear high byte
+            # 3 - 0x16 - Red high byte
+            # 4 - 0x17 - Red low byte
+            # 5 - 0x18 - Green low byte
+            # 6 - 0x19 - Green high byte
+            # 7 - 0x1A - blue low byte
+            # 8 - 0x1B - blue high byte
+
             data = [CMD_WRITE | CMD_AUTO_INCREMENT_PROTOCOL | REG_STATUS]
             self.logger.debug(format_debug_data("Reading data sending: ", data))
             b = self.dev.i2c(data, 9, 0.01)
@@ -202,7 +200,8 @@ class TMD3782(i2cPrototype, PointHandler):
             self.alarm_comm_fail.input = True
 
         finally:
-            self.dev.close()
+            if self.dev is not None:
+                self.dev.close()
 
             if self.alarm_comm_fail.active:
                 self.point_clear_light_level.quality = False

@@ -5,12 +5,9 @@ Created on Apr 11, 2016
 '''
 
 from typing import TYPE_CHECKING, List
-import traceback
-import logging
-from .linuxi2c3 import IIC
-from pyAutomation.DataObjects.Alarm import Alarm
 from pyAutomation.Devices.i2c.i2cPrototype import i2cPrototype
 from pyAutomation.Supervisory.PointHandler import PointHandler
+from .linuxi2c3 import IIC
 
 if TYPE_CHECKING:
     from pyAutomation.DataObjects.PointAnalog import PointAnalog
@@ -18,9 +15,7 @@ if TYPE_CHECKING:
     from pyAutomation.DataObjects.PointAnalogAbstract import PointAnalogAbstract
     from pyAutomation.DataObjects.PointDiscrete import PointDiscrete
 
-'''
-https://www.silabs.com/documents/public/data-sheets/Si7020-A20.pdf
-'''
+# https://www.silabs.com/documents/public/data-sheets/Si7020-A20.pdf
 # The information below is lifted directly from the datasheet
 ADDRESS = 0x40
 
@@ -48,6 +43,9 @@ class SI7020(i2cPrototype, PointHandler):
       'point_humidity':    {'type': 'PointAnalog',   'access': 'rw'},
       'point_temperature': {'type': 'PointAnalog',   'access': 'rw'},
       'point_run_heater':  {'type': 'PointDiscrete', 'access': 'rw'},
+
+      'alarm_comm_fail': {'type': "Alarm", 'access': 'rw'},
+      'alarm_vdd_low': {'type': "Alarm", 'access': 'rw'},
     }
 
     parameters = {}
@@ -61,21 +59,8 @@ class SI7020(i2cPrototype, PointHandler):
         self.device_points = None      # type: List[PointAbstract]
         self.dev = None                # type: IIC
 
-        self.alarm_comm_fail = Alarm(
-            name="humidity_comm_failure",
-            description="Temperature/humidity sensor communications failure",
-            on_delay=15,
-            off_delay=1,
-            consequences="Freezer control is unreliable",
-            more_info="System does not not ambient tempurature.")
-
-        self.alarm_vdd_low = Alarm(
-            name="humidity_low_voltage",
-            description="Temperature/humidity sensor reports low voltage on VDD rail.",
-            on_delay=15,
-            off_delay=15,
-            consequences="Control 3.3V power is below 1.9V. System operation is unreliable",
-            more_info="Controller failure imminent.")
+        self.alarm_comm_fail = None
+        self.alarm_vdd_low = None
 
         super().__init__(
           name=name,
@@ -88,7 +73,7 @@ class SI7020(i2cPrototype, PointHandler):
     def has_write_data(self) -> bool:
         return self.point_run_heater.request_value is not None
 
-    def _write_data(self):
+    def write_data(self):
         data = [CMD_READ_USER_REGISTER]
         b = self.dev.i2c(data, 1, 0.01)
 
@@ -99,7 +84,13 @@ class SI7020(i2cPrototype, PointHandler):
 
         data = [CMD_WRITE_USER_REGISTER, b]
 
-    def _setup(self):
+    def setup(self):
+        # Do a sanity check
+        assert self.alarm_comm_fail is not None,\
+          "Communications alarm (alarm_comm_fail) is not configured."
+        assert self.alarm_vdd_low is not None,\
+          "Low voltage (alarm_vdd_low) is not configured."
+
         try:
             self.dev = IIC(ADDRESS, self.bus)
 
@@ -133,7 +124,12 @@ class SI7020(i2cPrototype, PointHandler):
         except OSError as e:
             self.logger.warn("Communications error " + str(e))
 
-    def _read_data(self):
+        finally:
+            if self.dev is not None:
+                self.dev.close()
+            return self.is_setup
+
+    def read_data(self):
         if self.alarm_comm_fail.active:
             self.point_temperature.quality = False
             self.point_humidity.quality = False

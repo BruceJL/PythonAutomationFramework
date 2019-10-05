@@ -3,15 +3,17 @@ Created on Apr 14, 2016
 @author: Bruce
 http://ww1.microchip.com/downloads/en/DeviceDoc/20001952C.pdf
 '''
+import traceback
+import logging
 
 from pyAutomation.DataObjects.PointDiscrete import PointDiscrete
 from pyAutomation.DataObjects.PointReadOnly import PointReadOnly
 from pyAutomation.DataObjects.Alarm import Alarm
-import traceback
-import logging
-from .linuxi2c3 import IIC
+
 from pyAutomation.Devices.i2c.i2cPrototype import i2cPrototype
 from pyAutomation.Supervisory.PointHandler import PointHandler
+
+from .linuxi2c3 import IIC
 
 ADDRESS = 0x20
 REG_A_DIRECTION = 0x00  # IODIRA
@@ -68,6 +70,8 @@ class MCP23017(i2cPrototype, PointHandler):
       'port_B5':  {'type': 'PointDiscrete'},
       'port_B6':  {'type': 'PointDiscrete'},
       'port_B7':  {'type': 'PointDiscrete'},
+
+      'alarm_comm_fail':  {'type': 'Alarm', 'access': 'rw'},
     }
 
     parameters = {}
@@ -80,14 +84,7 @@ class MCP23017(i2cPrototype, PointHandler):
         self.port_a_cfg = 0xFF  # All ports read by default
         self.dev = None  # type: IIC
 
-        self.alarm_comm_fail = Alarm(
-            name="alarm_Multiplexer_comm_fail",
-            description="Discrete I/O communications lost",
-            on_delay=5.0,
-            off_delay=2.0,
-            consequences="Unable to control system outputs." +
-                         " System will be in an unknown state",
-            more_info="Unable to communicate with the MCP I/O chip.")
+        self.alarm_comm_fail = None
 
         self.port_A0 = None
         self.port_A1 = None
@@ -133,8 +130,13 @@ class MCP23017(i2cPrototype, PointHandler):
         _append_if_point_ro(self.port_B7, list)
         return list
 
-    def _setup(self):
+    def setup(self):
         self.logger.debug("Entering Function")
+
+        # Do a sanity check
+        assert self.alarm_comm_fail is not None,\
+          "Communications alarm (alarm_comm_Fail) is not configured."
+
         try:
             self.dev = IIC(ADDRESS, self.bus)
 
@@ -181,9 +183,11 @@ class MCP23017(i2cPrototype, PointHandler):
             self.is_setup = False
 
         finally:
-            self.dev.close()
+            if self.dev is not None:
+                self.dev.close()
+            return self.is_setup
 
-    def _read_data(self):
+    def read_data(self):
         self.logger.debug("Entering function")
 
         def _write_point(point, byte, index):
@@ -257,7 +261,7 @@ class MCP23017(i2cPrototype, PointHandler):
         self._has_write_data = True
         self.logger.debug("Got Interrupt from " + name)
 
-    def _write_data(self):
+    def write_data(self):
         # write data
         self.logger.debug("Entering Function")
 
@@ -331,8 +335,9 @@ class MCP23017(i2cPrototype, PointHandler):
         except Exception as e:
             self.logger.error(traceback.format_exc())
         finally:
-            self.dev.close()
-            return
+            if self.dev is not None:
+                self.dev.close()
+            return self.is_setup
 
     def _setup_port(self, point, config_byte, index):
         if type(point) is PointDiscrete or point is None:

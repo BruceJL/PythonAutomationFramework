@@ -1,6 +1,6 @@
-#http://www.phanderson.com/arduino/hih6130.html
-#http://cdn.sparkfun.com/datasheets/Prototyping/1443945.pdf
-#http://www.phanderson.com/arduino/I2CCommunications.pdf
+# http://www.phanderson.com/arduino/hih6130.html
+# http://cdn.sparkfun.com/datasheets/Prototyping/1443945.pdf
+# http://www.phanderson.com/arduino/I2CCommunications.pdf
 
 import datetime
 import logging
@@ -9,7 +9,7 @@ from pyAutomation.Supervisory.PointHandler import PointHandler
 
 
 class MS860702BA01(i2cPrototype, PointHandler):
-    # Honeywell MS860702BA01 Hygroostat
+    # Honeywell MS860702BA01 Hygrostat
 
     ADDRESS = 0x27
 
@@ -35,13 +35,13 @@ class MS860702BA01(i2cPrototype, PointHandler):
           name=name,
           logger=logger)
 
-    def _setup(self):
+    def setup(self):
         return True
 
     def measure(self):
         self.bus.write_quick(self.ADDRESS)
 
-    def _read_data(self):
+    def read_data(self):
 
         try:
             HUMIDITY_MSB = self.bus.read(self.ADDRESS)

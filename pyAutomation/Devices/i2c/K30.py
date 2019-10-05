@@ -5,12 +5,8 @@ Created on Apr 16, 2016
 @author: Bruce
 """
 
-import datetime
 import traceback
 
-from pyAutomation.DataObjects.Alarm import Alarm
-from pyAutomation.DataObjects.PointAnalog import PointAnalog
-from pyAutomation.DataObjects.PointDiscrete import PointDiscrete
 from .linuxi2c3 import IIC
 from .i2cPrototype import i2cPrototype
 from pyAutomation.Supervisory.PointHandler import PointHandler
@@ -45,6 +41,8 @@ class K30(i2cPrototype, PointHandler):
         'point_co2_level': 'get_point_rw',
         'point_calibration_running': 'get_point_rw',
         'point_abc_period': 'get_point_rw',
+
+        'alarm_comm_fail': {'type': "Alarm", 'access': 'rw'},
     }
 
     parameters = {}
@@ -55,21 +53,13 @@ class K30(i2cPrototype, PointHandler):
         self.is_setup = True
         self.read_state = 0
 
-        self.comm_fail_alarm = Alarm(
-            name=self.name + " alarm_co2_comm_fail",
-            description="CO2 Sensor Communications Lost",
-            on_delay=30.0,
-            off_delay=0.,
-            consequences="CO2 concentration cannot be measured." +
-            " CO2 misting will be inhibited.",
-            more_info="Unable to communicate with the K30 CO2 chip.")
-
         self.dev = None
 
         self.point_co2_level = None
         self.point_calibration_running = None
         self.point_abc_period = None
         self.consecutive_faults = 0
+        self.alarm_comm_fail = None
 
         super().__init__(
           name=name,
@@ -86,10 +76,13 @@ class K30(i2cPrototype, PointHandler):
           or self.point_abc_period.request_value is not None
         )
 
-    def _setup(self):
+    def setup(self):
+        # Do a sanity check
+        assert self.alarm_comm_fail is not None,\
+          "Communications alarm is not configured."
         return True
 
-    def _read_data(self):
+    def read_data(self):
         self.logger.debug("Entering function.")
         if self.read_state == 0:
             retry = self.read_co2_levels()
@@ -107,7 +100,8 @@ class K30(i2cPrototype, PointHandler):
             # Open up the IIC channel
             self.dev = IIC(ADDRESS, self.bus)
 
-            # Read from RAM (2) three bytes (3) starting at 0x0007, checksum is 0x2A) Get 5 bytes back, 10ms delay
+            # Read from RAM (2) three bytes (3) starting at 0x0007, checksum is
+            # 0x2A) Get 5 bytes back, 10ms delay
             # between write and read.
             b = self.dev.i2c([0x23, 0x00, 0x07, 0x2A], 5, 0.01)
 
@@ -116,14 +110,14 @@ class K30(i2cPrototype, PointHandler):
                 self.point_calibration_running.value = (self.meter_control_byte and 0x02) > 0
                 c = [b[2], b[3]]
                 self.point_co2_level.value = int.from_bytes(c, byteorder='big')
-                self.comm_fail_alarm.input = False
+                self.alarm_comm_fail.input = False
             else:
-                self.comm_fail_alarm.input = True
+                self.alarm_comm_fail.input = True
                 self.logger.debug("K30 bad checksum.")
             self.consecutive_faults = 0
 
         except OSError as e:
-            self.comm_fail_alarm.input = True
+            self.alarm_comm_fail.input = True
             self.consecutive_faults += 1
             self.logger.info("I/O fault " + str(self.consecutive_faults) + str(e))
 
@@ -131,7 +125,7 @@ class K30(i2cPrototype, PointHandler):
             self.logger.error(traceback.format_exc())
 
         finally:
-            if self.comm_fail_alarm.active:
+            if self.alarm_comm_fail.active:
                 self.point_co2_level.quality = False
                 self.point_calibration_running.quality = False
 
@@ -151,16 +145,16 @@ class K30(i2cPrototype, PointHandler):
             if _validate_checksum(b):
                 c = [b[1], b[2]]
                 self.point_abc_period.value = int.from_bytes(c, byteorder='big')
-                self.comm_fail_alarm.input = False
+                self.alarm_comm_fail.input = False
             else:
                 self.point_abc_period.quality = False
-                self.comm_fail_alarm.input = True
+                self.alarm_comm_fail.input = True
                 retry = True
         except OSError as e:
             self.logger.error("I/O error " + str(e))
             self.point_abc_period.quality = False
             retry = True
-            self.comm_fail_alarm.input = True
+            self.alarm_comm_fail.input = True
         except Exception as e:
             self.logger.error(traceback.format_exc())
         finally:
@@ -168,7 +162,7 @@ class K30(i2cPrototype, PointHandler):
                 self.dev.close()
         return retry
 
-    def _write_data(self):
+    def write_data(self):
         self.logger.debug("Entering function.")
         if self.point_calibration_running.request_value:
             self.write_abc_request()
