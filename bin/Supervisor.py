@@ -1,4 +1,11 @@
 #!/usr/bin/python3
+import pyAutomation
+from pyAutomation.DataObjects.Alarm import Alarm
+from pyAutomation.Supervisory.AlarmHandler import AlarmHandler
+from pyAutomation.Supervisory.SupervisedThread import SupervisedThread
+from pyAutomation.Supervisory.PointManager import PointManager
+from pyAutomation.Supervisory.AlarmNotifier import AlarmNotifier
+from pyAutomation.Supervisory.RpcServer import RpcServer
 
 import os
 import sys
@@ -16,13 +23,6 @@ import ruamel
 from rpyc.utils.server import ThreadedServer
 from typing import List, Dict
 
-import pyAutomation
-from pyAutomation.DataObjects.Alarm import Alarm
-from pyAutomation.Supervisory.AlarmHandler import AlarmHandler
-from pyAutomation.Supervisory.SupervisedThread import SupervisedThread
-from pyAutomation.Supervisory.PointManager import PointManager
-from pyAutomation.Supervisory.AlarmNotifier import AlarmNotifier
-from pyAutomation.Supervisory.RpcServer import RpcServer
 
 # build the formatter
 formatter = logging.Formatter(
@@ -33,22 +33,25 @@ logger_supervisory = None
 
 class Supervisor(object):
 
-    def __init__(self, logic: 'List[str]', point_database: 'List[str]') -> None:
-
-        #load the point database.
+    def __init__(
+      self,
+      logic_yaml_files: 'List[str]',
+      point_database_yaml_files: 'List[str]') -> None:
 
         self.threads = []  # type: List[SupervisedThread]
 
-        for p in point_database:
-            PointManager().load_points(p)
+        # load the point database(s).
+        for file in point_database_yaml_files:
+            print("loading file: " + file)
+            PointManager().load_points(file)
 
         yml = ruamel.yaml.YAML(typ='safe', pure=True)
         yml.default_flow_style = False
         yml.indent(sequence=4, offset=2)
 
         # open the supplied logic yaml file.
-        for f in logic:
-            with open(f, 'r') as ymlfile:
+        for file in logic_yaml_files:
+            with open(file, 'r') as ymlfile:
                 cfg = yml.load(ymlfile)
 
         # Import all the loggers
@@ -221,29 +224,27 @@ class Supervisor(object):
 parser = argparse.ArgumentParser(description='Start the pyAutomation system.')
 
 parser.add_argument(
-  '-p', '--points',
-  type=str,
+  '--points','-p',
   action='store',
-  default='points.yaml',
   nargs='+',
   help='yaml file(s) containing the points database for this system.',
 )
 
 parser.add_argument(
-  '-l', '--logic',
-  type=str,
+  '--logic','-l',
   action='store',
-  default='logic.yaml',
   nargs='+',
-  help='yaml files(s) containing the logic instances to be created for this system.',
+  help='yaml files(s) containing the logic instances to be created for this '
+    + 'system.',
 )
 
 args = parser.parse_args()
 
+
 # run the supervisor.
 s = Supervisor(
-  logic = args.logic,
-  point_database = args.points
+  logic_yaml_files = args.logic,
+  point_database_yaml_files = args.points,
 )
 
 
