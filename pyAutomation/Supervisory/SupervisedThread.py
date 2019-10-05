@@ -151,16 +151,19 @@ class SupervisedThread(Interruptable, ABC):
             self.logger.info("Stopping Logic: " + self.name)
             self.terminated = True
 
+    # values for live object data for transport over JSON.
+    def __getstate__(self) -> 'Dict[str, Any]':
+        return {
+          'name': self._name,
+          'sleep_time': self.sleep_time,
+          'sweep_time': self.sweep_time,
+          'last_run_time': self.last_run_time,
+          'terminated': self.terminated,
+        }
 
-    # Overriding the __dict__ call here creates problems with
-    # dynamically assigning point to SupervisedThreads
-
-    @property
-    def pickle_dict(self) -> 'Dict[str, Any]':
-        return dict(
-          name=self._name,
-          sleep_time=self.sleep_time,
-          sweep_time=self.sweep_time,
-          last_run_time=self.last_run_time,
-          terminated=self.terminated,
-        )
+    def __setstate__(self, d: 'Dict[str, Any]') -> 'None':
+        self._name = d['name']
+        self.sleep_time = d['sleep_time']
+        self.sweep_time = d['sweep_time']
+        self.last_run_time = d['last_run_time']
+        self.terminated = d['terminated']
