@@ -1,6 +1,7 @@
 from .PointAnalogReadOnlyAbstract import PointAnalogReadOnlyAbstract
 from .PointReadOnly import PointReadOnly
 import logging
+from typing import Callable
 
 logger = logging.getLogger('controller')
 
@@ -67,10 +68,13 @@ class PointAnalogScaled(PointAnalogReadOnlyAbstract):
 
     value = property(_get_value, _set_value)
 
-    def _get_writer(self) -> 'obj':
+    def _get_writer(self):
         return self.point.writer
 
-    writer = property(_get_writer)
+    def _set_writer(self, w) -> 'None':
+        self.point.writer = w
+
+    writer = property(_get_writer, _set_writer)
 
     def _get_next_update(self):
         return self.point.next_update
@@ -105,10 +109,10 @@ class PointAnalogScaled(PointAnalogReadOnlyAbstract):
 
     human_readable_value = property(_get_human_readable_value)
 
-    def add_observer(name: 'str', observer: 'Callable[str,None]') -> 'None':
+    def add_observer(self, name: 'str', observer: 'Callable[str,None]') -> 'None':
         self.point.add_observer(name, observer)
 
-    def del_observer(name: 'str') -> 'None':
+    def del_observer(self, name: 'str') -> 'None':
         self.point.del_observer(name)
 
     def get_readonly_object(self) -> 'PointAnalogReadOnlyAbstract':

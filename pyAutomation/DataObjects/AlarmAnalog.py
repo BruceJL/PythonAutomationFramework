@@ -18,11 +18,6 @@ class AlarmAnalog(Alarm):
         "high_low_limit"]
 
     def __init__(self, **kwargs) -> None:
-        @keyword
-        @keyword h
-        @keyword
-        """
-
         """
         The constructor for AlarmAnalog class.
 
