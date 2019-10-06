@@ -1,26 +1,25 @@
-import jsonpickle
-import rpyc
 from typing import List, TYPE_CHECKING
 from datetime import datetime, timedelta
 import logging
+import jsonpickle
+import rpyc
 
 if TYPE_CHECKING:
     from pyAutomation.DataObjects.Alarm import Alarm
     from pyAutomation.DataObjects.PointAbstract import PointAbstract
     from pyAutomation.DataObjects.PointReadOnlyAbstract import PointReadOnlyAbstract
-    from pyAutomation.Supervisory.SupervisedThread import SupervisedThread
 
 logger = logging.getLogger('supervisory')
 
 
 # define the rpyc server
 class RpcServer(rpyc.Service):
-    active_alarm_list = None  # type: List[Alarm]
-    point_dict = {}  # type: Dict[str, PointAbstract]
-    thread_list = [] # type: List[SupervisedThread]
-    last_read_time = None  # type: datetime
-    global_alarm_list = None  # type: Dict[str, Alarm]
-    remote_point_dict = {} # type: Dict[PointAbstract]
+    active_alarm_list = None  # type: 'List[Alarm]'
+    point_dict = {}           # type: 'Dict[str, PointAbstract]'
+    thread_list = []          # type: 'List[SupervisedThread]'
+    last_read_time = None     # type: 'datetime'
+    global_alarm_list = {}    # type: 'Dict[str, Alarm]'
+    remote_point_dict = {}    # type: 'Dict[PointAbstract]'
     get_hmi_point = None
 
     def on_connect(self, credentials):
@@ -53,7 +52,6 @@ class RpcServer(rpyc.Service):
         self.remote_point_dict.clear()
 
     def exposed_get_hmi_points_list(self):  # this is an exposed method
-        x = datetime.now()
         if 0 == self.last_read_time:
             logger.debug("First request, transmitting all points ")
             p = self.remote_point_dict
@@ -65,28 +63,26 @@ class RpcServer(rpyc.Service):
                     p.update({key: point})
         self.last_read_time = datetime.now()
         pickle_text = jsonpickle.encode(p)
-        #logger.debug("transmitting: " + pickle_text)
+        # logger.debug("transmitting: " + pickle_text)
         return pickle_text
 
     def exposed_get_thread_list(self):
         d = []
         for t in self.thread_list:
             d.append(t.pickle_dict)
-        #logger.debug("sending: " + str(d))
-        return jsonpickle.encode(d)
 
-        #return jsonpickle.encode(self.thread_list)
+        logger.debug("sending: %s", str(d))
+        return jsonpickle.encode(d)
 
     def exposed_get_active_alarm_list(self):
         return jsonpickle.encode(self.active_alarm_list)
 
-    # TODO access the alarm through the active alarm list. There are alarms embedded in comm drivers
     def exposed_acknowledge_alarm(self, alarm: str):
-        logger.info("RPC acknowledge received for " + alarm)
+        logger.info("RPC acknowledge received for %s", alarm)
         self.global_alarm_list[alarm].acknowledge()
 
     def exposed_set_hmi_value(self, point: str, value: str):
-        logger.info("attempting to set " + point + " to " + value)
+        logger.info("attempting to set %s to %s", point, value)
         p = self.point_dict[point]
         p.hmi_value = value
 

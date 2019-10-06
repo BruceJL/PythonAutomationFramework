@@ -78,7 +78,8 @@ class Alarm(object):
         # Interlock value
         self.enabled = True  # type: bool
 
-        # description of the bad things that will happen if this alarm is not addressed.
+        # description of the bad things that will happen if this alarm is not
+        # addressed.
         self.consequences = "None"  # type: str
 
         # Additional info for this alarm
@@ -110,7 +111,8 @@ class Alarm(object):
 
         for kw in kwargs:
             assert kw in self.keywords, \
-              "Cannot assign " + str(kw) + " to Alarm, property does not exist"
+                "Cannot assign value of '" + kwargs[kw] +  "' to '" \
+                + str(kw) + "' property of Alarm, property does not exist"
             setattr(self, kw, kwargs[kw])
 
     def config(self, n: 'str') -> 'None':

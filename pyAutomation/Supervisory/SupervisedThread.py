@@ -16,17 +16,15 @@ class SupervisedThread(Interruptable, ABC):
         self.period = period  # in microseconds
         self._logger = logging.getLogger(logger)
 
-        self.sleep_time = 0  # type: float
-        self.default_next_run_time = None  # type: datetime.datetime
-        self.sweep_time = -1  # type: int
-        self.last_run_time = None  # type: datetime.datetime
+        self.sleep_time = 0                # type: 'float'
+        self.default_next_run_time = None  # type: 'datetime.datetime'
+        self.sweep_time = -1               # type: 'int'
+        self.last_run_time = None          # type: 'datetime.datetime'
+        self.terminated = False            # type 'bool'
+        self._quit = False                 # type 'bool'
         self.condition = threading.Condition()
         self.interrupt_request_deque = deque()
-        self._quit = False
-        self.terminated = False
-
         self.thread = threading.Thread(target=self.thread_loop, args=(loop,))
-
         self.type = "Control"
 
     def start(self):
@@ -103,7 +101,8 @@ class SupervisedThread(Interruptable, ABC):
 
                 # increment the next_run_time
                 if self.period is not None:
-                    self.default_next_run_time += datetime.timedelta(seconds=self.period)
+                    self.default_next_run_time \
+                        += datetime.timedelta(seconds=self.period)
 
                 start_time = time.monotonic()
                 self.last_run_time = datetime.datetime.now()
@@ -118,8 +117,8 @@ class SupervisedThread(Interruptable, ABC):
                 if self.sleep_time is None and self.period is not None:
                     # wait the sleep time as defined by the supervisor
                     self.sleep_time = (
-                        self.default_next_run_time
-                        - datetime.datetime.now()).total_seconds()
+                      self.default_next_run_time
+                      - datetime.datetime.now()).total_seconds()
 
                 # Check and see if there are interrupts queued (i.e. the routine got an
                 # interrupt whilst it was running. If so, restart the routine.
@@ -150,6 +149,19 @@ class SupervisedThread(Interruptable, ABC):
             self.condition.release()
             self.logger.info("Stopping Logic: " + self.name)
             self.terminated = True
+
+    # values for live object data for transport over JSON to the HMI.
+    # N.B. these need to be regular dicts, as the HMI doesn't know about
+    # the induvidual processes, and SupervisedThread is abstract.
+    @property
+    def pickle_dict(self) -> 'Dict[str, Any]':
+        return {
+          'name': self._name,
+          'sleep_time': self.sleep_time,
+          'sweep_time': self.sweep_time,
+          'last_run_time': self.last_run_time,
+          'terminated': self.terminated,
+        }
 
     # values for live object data for transport over JSON.
     def __getstate__(self) -> 'Dict[str, Any]':

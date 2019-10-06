@@ -1,4 +1,17 @@
 #!/usr/bin/python3
+import logging
+from logging.handlers import RotatingFileHandler
+import os
+import sys
+import signal
+import argparse
+import inspect
+import threading
+from importlib import import_module
+from rpyc.utils.server import ThreadedServer
+from typing import List, Dict
+import ruamel
+
 import pyAutomation
 from pyAutomation.DataObjects.Alarm import Alarm
 from pyAutomation.Supervisory.AlarmHandler import AlarmHandler
@@ -7,21 +20,7 @@ from pyAutomation.Supervisory.PointManager import PointManager
 from pyAutomation.Supervisory.AlarmNotifier import AlarmNotifier
 from pyAutomation.Supervisory.RpcServer import RpcServer
 
-import os
-import sys
 sys.path.insert(0, os.getcwd())
-
-import logging
-from logging.handlers import RotatingFileHandler
-import signal
-import argparse
-
-import inspect
-import threading
-from importlib import import_module
-import ruamel
-from rpyc.utils.server import ThreadedServer
-from typing import List, Dict
 
 
 # build the formatter
@@ -38,7 +37,7 @@ class Supervisor(object):
       logic_yaml_files: 'List[str]',
       point_database_yaml_files: 'List[str]') -> None:
 
-        self.threads = []  # type: List[SupervisedThread]
+        self.threads = []  # type: 'List[SupervisedThread]'
 
         # load the point database(s).
         for file in point_database_yaml_files:
@@ -62,7 +61,7 @@ class Supervisor(object):
             l = logging.getLogger(logger)
             l.setLevel(cfg[section][logger]['level'])
             fh = RotatingFileHandler(
-              filename = cfg[section][logger]['file'],
+              filename=cfg[section][logger]['file'],
               maxBytes=cfg[section][logger]['maxBytes'],
               backupCount=cfg[section][logger]['backupCount'],
               encoding=None,
@@ -76,26 +75,31 @@ class Supervisor(object):
         # Setup the alarm notifiers.
         section = "AlarmNotifiers"
         for notifier in cfg[section]:
-            self.logger.info("attempting import AlarmNotifier " + notifier)
+            self.logger.info("attempting import AlarmNotifier %s ", notifier)
 
             imported_module = import_module(
               cfg[section][notifier]["module"],
               cfg[section][notifier]["package"])
 
             assert 'logger' in cfg[section][notifier], \
-              "No logger entry defined for " + notifier
+                "No logger entry defined for " + notifier
             logger = cfg[section][notifier]["logger"]
 
             for i in dir(imported_module):
                 attribute = getattr(imported_module, i)
+
+                # Search the file for an AlarmNotifier object.
                 if    inspect.isclass(attribute) \
                   and issubclass(attribute, AlarmNotifier) \
                   and attribute != AlarmNotifier:
+
                     concrete_notifier = attribute(
                       name=notifier,
                       logger=logger)
-                    self.logger.info("adding " + imported_module.__name__ +  " "
-                      + str(attribute) + " to alarm notifiers list" )
+                    self.logger.info(
+                      "adding %s %s to alarm notifiers list",
+                      imported_module.__name__ , str(attribute))
+
                     Alarm._get_notifiers().append(concrete_notifier)
 
                     # Populate module assign_parameters
@@ -108,8 +112,8 @@ class Supervisor(object):
         # Create the signleton alarm handler thread.
         # The alarm handler is not an option.
         self.alarm_handler = AlarmHandler(
-            name="alarm processer",
-            logger="supervisory"
+          name="alarm processer",
+          logger="supervisory"
         )
 
         Alarm.set_alarm_handler(self.alarm_handler)
@@ -118,12 +122,15 @@ class Supervisor(object):
         # Create all of the custom threads.
         section = 'SupervisedThreads'
         for thread_name in cfg[section]:
-            self.logger.info("attempting to import " + cfg[section][thread_name]["module"])
+            self.logger.info(
+              "attempting to import %s",  cfg[section][thread_name]["module"])
             imported_module = import_module(
               cfg[section][thread_name]["module"],
               cfg[section][thread_name]["package"])
             for i in dir(imported_module):
                 attribute = getattr(imported_module, i)
+
+                # Search the file for the SupervisedThread object.
                 if    inspect.isclass(attribute) \
                   and issubclass(attribute, SupervisedThread) \
                   and attribute != SupervisedThread:
@@ -134,12 +141,12 @@ class Supervisor(object):
                       logger=cfg[section][thread_name]["logger"]
                     )
 
-                    self.logger.info("added " + thread_name +  " " + str(attribute))
+                    self.logger.info("added %s %s", thread_name, str(attribute))
 
                     # Populate module points
                     if 'points' in cfg[section][thread_name]:
                         for point_name in cfg[section][thread_name]['points']:
-                            self.logger.info("assigning point " + point_name)
+                            self.logger.info("assigning point %s", point_name)
                             if 'access' in cfg[section][thread_name]['points'][point_name]:
                                 db_rw = cfg[section][thread_name]['points'][point_name]['access']
                             else:
@@ -154,7 +161,7 @@ class Supervisor(object):
                               db_rw=db_rw
                             )
 
-                    #populate module alarms
+                    # populate module alarms
                     if 'alarms' in cfg[section][thread_name]:
                         for alarm_name in cfg[section][thread_name]['alarms']:
                             self.logger.info("assigning point " + alarm_name)
@@ -184,12 +191,12 @@ class Supervisor(object):
 
                     concrete_thread.config(config=config)
 
-            # Append the fully built module to the threads dict.
-            self.threads.append(concrete_thread)
+                    # Append the fully built module to the threads dict.
+                    self.threads.append(concrete_thread)
 
         # Fire up all the threads.
         for i in self.threads:
-            self.logger.info("starting: " + i.name)
+            self.logger.info("starting: %s", i.name)
             i.start()
 
         # Start the point database server
@@ -224,27 +231,27 @@ class Supervisor(object):
 parser = argparse.ArgumentParser(description='Start the pyAutomation system.')
 
 parser.add_argument(
-  '--points','-p',
+  '--points', '-p',
   action='store',
   nargs='+',
   help='yaml file(s) containing the points database for this system.',
 )
 
 parser.add_argument(
-  '--logic','-l',
+  '--logic', '-l',
   action='store',
   nargs='+',
   help='yaml files(s) containing the logic instances to be created for this '
-    + 'system.',
+  + 'system.',
 )
 
 args = parser.parse_args()
 
 
 # run the supervisor.
-s = Supervisor(
-  logic_yaml_files = args.logic,
-  point_database_yaml_files = args.points,
+s=Supervisor(
+  logic_yaml_files=args.logic,
+  point_database_yaml_files=args.points,
 )
 
 

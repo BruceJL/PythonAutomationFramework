@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import sys
 import curses
 import datetime
 import logging
@@ -7,11 +8,11 @@ from logging.handlers import RotatingFileHandler
 import os
 import traceback
 import threading
-import rpyc
-import jsonpickle
 import collections
+import jsonpickle
+import json
+import rpyc
 from ruamel import yaml
-import sys
 from typing import List, Dict
 
 import pyAutomation.Hmi.Common
@@ -48,11 +49,12 @@ class CursesHmi(object):
         logic_server_conn.root.add_monitored_points(self.pages[i]['points'])
 
     def __init__(self, config):
-        self.quit = False  # type: bool
-        self.mode = "POINTS"  # type: str
-        self.highlighted_point = 0   # type: int
-        self.current_page = -1
-        self.pages = [] # type: List[Dict]
+        self.quit = False           # type: 'bool'
+        self.mode = "POINTS"        # type: 'str'
+        self.highlighted_point = 0  # type: 'int'
+        self.current_page = -1      # type 'int'
+        self.pages = []             # type: 'List[Dict]'
+        self.failed = False         # type: 'bool'
 
         # open the supplied yaml file.
         with open(config, 'r') as ymlfile:
@@ -66,7 +68,7 @@ class CursesHmi(object):
             })
 
         assert len(self.pages) > 0, \
-          "No page data found. No configuration file specified?"
+            "No page data found. No configuration file specified?"
 
         self.load_page_points(0)
 
@@ -76,7 +78,8 @@ class CursesHmi(object):
 
         self.gui_loop_thread = threading.Thread(target=self.gui_loop)
         self.user_input_thread = threading.Thread(target=self.get_user_input)
-        self.get_network_data_thread = threading.Thread(target=self.get_network_data)
+        self.get_network_data_thread = \
+            threading.Thread(target=self.get_network_data)
         self.points = collections.OrderedDict()
         self.alarms = collections.OrderedDict()
         self.threads = []
@@ -116,7 +119,7 @@ class CursesHmi(object):
             if v == p:
                 return k
         assert False, \
-          "Point: " + p.description + " not found in local database."
+            "Point: " + p.description + " not found in local database."
 
     # Get the data from the point database server.
     def get_network_data(self):
@@ -125,23 +128,25 @@ class CursesHmi(object):
             self.get_network_data_condition.acquire()
             while not self.quit:
 
-                points_json_data = logic_server_conn.root.exposed_get_hmi_points_list()
-                alarms_json_data = logic_server_conn.root.exposed_get_active_alarm_list()
-                threads_json_data = logic_server_conn.root.exposed_get_thread_list()
+                points_json_data = \
+                    logic_server_conn.root.exposed_get_hmi_points_list()
+                alarms_json_data = \
+                    logic_server_conn.root.exposed_get_active_alarm_list()
+                threads_json_data = \
+                    logic_server_conn.root.exposed_get_thread_list()
 
-                #logger.debug(points_json_data)
                 json_points = jsonpickle.decode(points_json_data)
                 json_alarms = jsonpickle.decode(alarms_json_data)
                 self.threads = jsonpickle.decode(threads_json_data)
-
-                #logger.debug("thread data: " + threads_json_data)
 
                 with self.data_access_condition:
                     if json_points is not None:
                         for k, point in json_points.items():
                             if k in self.points:
-                                # point already exists, only update the received values.
-                                pyAutomation.Hmi.Common.update_object(self.points[k], point, k)
+                                # point already exists, only update the
+                                # received values.
+                                pyAutomation.Hmi.Common.update_object(
+                                  self.points[k], point, k)
                             else:
                                 # point doesn't exist, make a new entry
                                 self.points[k] = point
@@ -159,6 +164,16 @@ class CursesHmi(object):
                     if self.mode == "ALARMS":
                         while self.highlighted_point > len(self.alarms) - 1:
                             self.highlighted_point -= 1
+
+            # Something didn't work so output the last recieved network data
+            if self.failed:
+                j = json.loads(points_json_data)
+                logger.info("point data: %s",
+                            json.dumps(j, indent=4, sort_keys=True))
+                j = json.loads(threads_json_data)
+                logger.info("thread data: %s ",
+                            json.dumps(j, indent=4, sort_keys=True))
+                self.exit()
 
                 self.get_network_data_condition.wait(0.5)
         except Exception:
@@ -187,16 +202,16 @@ class CursesHmi(object):
     def gui_loop(self) -> None:
         logger.info("Starting")
 
-        curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLACK)  # normal color
-        curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_RED)  # Alarm Active color
-        curses.init_pair(3, curses.COLOR_WHITE, curses.COLOR_BLUE)  # highlighted point color
-        curses.init_pair(4, curses.COLOR_WHITE, curses.COLOR_MAGENTA)  # bad quality color
-        curses.init_pair(5, curses.COLOR_BLACK, curses.COLOR_GREEN)  # User entry color.
-        curses.init_pair(6, curses.COLOR_BLACK, curses.COLOR_YELLOW)  # Forced point color.
+        curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLACK)     # normal color
+        curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_RED)       # Alarm Active color
+        curses.init_pair(3, curses.COLOR_WHITE, curses.COLOR_BLUE)      # highlighted point color
+        curses.init_pair(4, curses.COLOR_WHITE, curses.COLOR_MAGENTA)   # bad quality color
+        curses.init_pair(5, curses.COLOR_BLACK, curses.COLOR_GREEN)     # User entry color.
+        curses.init_pair(6, curses.COLOR_BLACK, curses.COLOR_YELLOW)    # Forced point color.
         curses.init_pair(7, curses.COLOR_MAGENTA, curses.COLOR_YELLOW)  # Forced bad quality point color.
-        curses.init_pair(8, curses.COLOR_RED, curses.COLOR_BLACK)  # alarm acknowledged color.
-        curses.init_pair(9, curses.COLOR_GREEN, curses.COLOR_BLACK)  # alarm reset color.
-        curses.init_pair(10, curses.COLOR_BLACK, curses.COLOR_YELLOW)  # alarm blocked color.
+        curses.init_pair(8, curses.COLOR_RED, curses.COLOR_BLACK)       # alarm acknowledged color.
+        curses.init_pair(9, curses.COLOR_GREEN, curses.COLOR_BLACK)     # alarm reset color.
+        curses.init_pair(10, curses.COLOR_BLACK, curses.COLOR_YELLOW)   # alarm blocked color.
 
         try:
             pyAutomation.Hmi.Common.screen.clear()
@@ -208,6 +223,8 @@ class CursesHmi(object):
                 except Exception:
                     logger.error(traceback.format_exc())
                     pyAutomation.Hmi.Common.screen.clear()
+                    self.failed = True
+
                 finally:
                     with self.data_access_condition:
                         self.data_access_condition.wait(0.5)
@@ -223,10 +240,13 @@ class CursesHmi(object):
             # determine the longest description
             (y, x) = pyAutomation.Hmi.Common.screen.getmaxyx()
 
-            pyAutomation.Hmi.Common.screen.addstr(1, 2, str(datetime.datetime.now()))
+            pyAutomation.Hmi.Common.screen.addstr(
+              1,
+              2,
+              str(datetime.datetime.now()))
 
             right_justify = 0
-            for key, point in self.points.items()   :
+            for point in self.points.values():
                 j = len(point.description)
                 if j > right_justify:
                     right_justify = j
@@ -234,23 +254,37 @@ class CursesHmi(object):
 
             line = 3
             i = 0
-            for key, point in self.points.items():
+            for point in self.points.values():
                 # clear the line, write x-2 blank spaces to the line
-                pyAutomation.Hmi.Common.screen.addstr(line, 1, " " * (x - 2), curses.color_pair(1))
+                pyAutomation.Hmi.Common.screen.addstr(
+                  line,
+                  1,
+                  " " * (x - 2),
+                  curses.color_pair(1))
 
                 if i == self.highlighted_point and self.mode == "POINTS":
                     color = curses.color_pair(3)
                 else:
                     color = curses.color_pair(1)
                 j = right_justify - len(point.description)
-                pyAutomation.Hmi.Common.screen.addstr(line, j, point.description + ":", color)
+
+                pyAutomation.Hmi.Common.screen.addstr(
+                  line,
+                  j,
+                  point.description + ":",
+                  color)
 
                 j = right_justify + 2
 
                 color = pyAutomation.Hmi.Common.get_point_curses_color(point)
 
-                pyAutomation.Hmi.Common.screen.addstr(line, j, point.human_readable_value, color)
-                pyAutomation.Hmi.Common.screen.addstr(" " * (10 - len(point.human_readable_value)))
+                pyAutomation.Hmi.Common.screen.addstr(
+                  line,
+                  j,
+                  point.human_readable_value,
+                  color)
+                pyAutomation.Hmi.Common.screen.addstr(
+                  " " * (10 - len(point.human_readable_value)))
 
                 line += 1
                 i += 1
@@ -260,27 +294,28 @@ class CursesHmi(object):
 
             # calculate the column widths
             columns = [3, 0, 0, 0, 0, 0]
-            for t in self.threads:
-                size = len(t["name"])
+            for thread in self.threads:
+                logger.debug("thread data: %s", str(thread))
+                size = len(thread['name'])
                 if size > columns[1]:
                     columns[1] = size
 
-                size = len("{:.5f}".format(t['sweep_time']))
+                size = len("{:.5f}".format(thread['sweep_time']))
                 if size > columns[2]:
                     columns[2] = size
 
-                if t['sleep_time'] is not None:
-                    size = len("{:.5f}".format(t['sleep_time']))
+                if thread['sleep_time'] is not None:
+                    size = len("{:.5f}".format(thread['sleep_time']))
                 else:
                     size = 4
                 if size > columns[3]:
                     columns[3] = size
 
-                size = len(str(t['last_run_time']))
+                size = len(str(thread['last_run_time']))
                 if size > columns[4]:
                     columns[4] = size
 
-                size = len(str(t['terminated']))
+                size = len(str(thread['terminated']))
                 if size > columns[5]:
                     columns[5] = size
 
@@ -292,33 +327,83 @@ class CursesHmi(object):
 
             color = curses.color_pair(1)
 
-            pyAutomation.Hmi.Common.screen.addstr(line, columns[0], " " * (columns[5]), curses.color_pair(1))
-            pyAutomation.Hmi.Common.screen.addstr(line, columns[0], "Name", color)
-            pyAutomation.Hmi.Common.screen.addstr(line, columns[1], "Sweep", color)
-            pyAutomation.Hmi.Common.screen.addstr(line, columns[2], "Sleep", color)
-            pyAutomation.Hmi.Common.screen.addstr(line, columns[3], "last run time", color)
-            pyAutomation.Hmi.Common.screen.addstr(line, columns[4], "Died", color)
+            pyAutomation.Hmi.Common.screen.addstr(
+              line,
+              columns[0],
+              " " * (columns[5]),
+              curses.color_pair(1))
+            pyAutomation.Hmi.Common.screen.addstr(
+              line,
+              columns[0],
+              "Name",
+              color)
+            pyAutomation.Hmi.Common.screen.addstr(
+              line,
+              columns[1],
+              "Sweep",
+              color)
+            pyAutomation.Hmi.Common.screen.addstr(
+              line,
+              columns[2],
+              "Sleep",
+              color)
+            pyAutomation.Hmi.Common.screen.addstr(
+              line,
+              columns[3],
+              "last run time",
+              color)
+            pyAutomation.Hmi.Common.screen.addstr(
+              line,
+              columns[4],
+              "Died",
+              color)
             line += 1
 
-            for t in self.threads:
+            for thread in self.threads:
                 # Clear the line
                 pyAutomation.Hmi.Common.screen.addstr(
-                    line,
-                    columns[0],
-                    " " * (columns[4]),
-                    curses.color_pair(1))
+                  line,
+                  columns[0],
+                  " " * (columns[4]),
+                  curses.color_pair(1))
 
                 # Render the line
-                pyAutomation.Hmi.Common.screen.addstr(line, columns[0], t['name'], color)
-                pyAutomation.Hmi.Common.screen.addstr(line, columns[1], "{:.5f}".format(t['sweep_time']), color)
+                pyAutomation.Hmi.Common.screen.addstr(
+                  line,
+                  columns[0],
+                  thread['name'],
+                  color)
 
-                if t['sleep_time'] is not None:
-                    pyAutomation.Hmi.Common.screen.addstr(line, columns[2], "{:.5f}".format(t['sleep_time']), color)
+                pyAutomation.Hmi.Common.screen.addstr(
+                  line,
+                  columns[1],
+                  "{:.5f}".format(thread['sweep_time']),
+                  color)
+
+                if thread['sleep_time'] is not None:
+                    pyAutomation.Hmi.Common.screen.addstr(
+                      line,
+                      columns[2],
+                      "{:.5f}".format(thread['sleep_time']),
+                      color)
                 else:
-                    pyAutomation.Hmi.Common.screen.addstr(line, columns[2], "None", color)
+                    pyAutomation.Hmi.Common.screen.addstr(
+                      line,
+                      columns[2],
+                      "None",
+                      color)
 
-                pyAutomation.Hmi.Common.screen.addstr(line, columns[3], str(t['last_run_time']), color)
-                pyAutomation.Hmi.Common.screen.addstr(line, columns[4], str(t['terminated']), color)
+                pyAutomation.Hmi.Common.screen.addstr(
+                  line,
+                  columns[3],
+                  str(thread['last_run_time']),
+                  color)
+
+                pyAutomation.Hmi.Common.screen.addstr(
+                  line,
+                  columns[4],
+                  str(thread['terminated']),
+                  color)
                 line += 1
 
             # Render the alarms.
@@ -330,7 +415,7 @@ class CursesHmi(object):
                 pyAutomation.Hmi.Common.screen.addstr(k, 2, " " * x)
 
             i = 0
-            for key, alarm in self.alarms.items():
+            for alarm in self.alarms.values():
                 if self.highlighted_point == i and self.mode == "ALARMS":
                     pyAutomation.Hmi.Common.screen.addstr(line, j - 2, ">")
 
@@ -412,11 +497,13 @@ class CursesHmi(object):
                             pyAutomation.Hmi.Common.screen.keypad(True)
 
                         elif c == curses.KEY_F11:  # Toggle force
-                            pyAutomation.Hmi.Common.toggle_point_force(keys[self.highlighted_point])
+                            pyAutomation.Hmi.Common.toggle_point_force(
+                              keys[self.highlighted_point])
 
                         elif c == curses.KEY_F10:  # Toggle quality if forced
                             if self.points[keys[self.highlighted_point]].forced:
-                                pyAutomation.Hmi.Common.toggle_point_quality(keys[self.highlighted_point])
+                                pyAutomation.Hmi.Common.toggle_point_quality(
+                                  keys[self.highlighted_point])
                         else:
                             pass
 
@@ -426,20 +513,22 @@ class CursesHmi(object):
                             alarms = list(self.alarms.values())
 
                         if c == ord('a') and not self.alarms_need_refresh:
-                            # logger.debug("acknowledging " + alarms[self.highlighted_point])
-                            pyAutomation.Hmi.Common.acknowledge_alarm(alarms[self.highlighted_point].name)
+                            pyAutomation.Hmi.Common.acknowledge_alarm(
+                              alarms[self.highlighted_point].name)
                             with self.data_access_condition:
                                 self.alarms_need_refresh = True
                             pyAutomation.Hmi.Common.trigger_gui_update()
                         elif c == ord('b'):
-                            alarms[self.highlighted_point].blocked = not alarms[self.highlighted_point].blocked
-                        elif c == 10 or c == 13:
+                            alarms[self.highlighted_point].blocked = \
+                                not alarms[self.highlighted_point].blocked
+                        elif c in (10, 13):
                             self.hmi_interact(alarms[self.highlighted_point])
                         else:
                             pass
 
         except Exception:
             logger.error(traceback.format_exc())
+            self.failed = True
             self.exit()
         finally:
             logger.info("Stopping!")
