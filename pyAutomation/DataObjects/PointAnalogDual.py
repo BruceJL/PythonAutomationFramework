@@ -54,7 +54,7 @@ class PointAnalogDual(
                 self._value = value
                 self.write_request = True
 
-                for callback in self._observers:
+                for callback in self._observers.values():
                     callback(name + ">" + self.name)
         else:
             self._quality = False

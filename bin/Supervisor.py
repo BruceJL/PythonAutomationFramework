@@ -39,11 +39,6 @@ class Supervisor(object):
 
         self.threads = []  # type: 'List[SupervisedThread]'
 
-        # load the point database(s).
-        for file in point_database_yaml_files:
-            print("loading file: " + file)
-            PointManager().load_points(file)
-
         yml = ruamel.yaml.YAML(typ='safe', pure=True)
         yml.default_flow_style = False
         yml.indent(sequence=4, offset=2)
@@ -70,7 +65,14 @@ class Supervisor(object):
             l.addHandler(fh)
 
         self.logger = logging.getLogger('supervisory')
-        PointManager().logger = self.logger
+        assert self.logger is not None, \
+            "The logger didn't assign properly"
+        PointManager.logger = self.logger
+
+        # load the point database(s).
+        for file in point_database_yaml_files:
+            self.logger.info("loading file: " + file)
+            PointManager().load_points(file)
 
         # Setup the alarm notifiers.
         section = "AlarmNotifiers"
@@ -81,8 +83,11 @@ class Supervisor(object):
               cfg[section][notifier]["module"],
               cfg[section][notifier]["package"])
 
+<<<<<<< HEAD
             assert 'logger' in cfg[section][notifier], \
                 "No logger entry defined for " + notifier
+=======
+>>>>>>> 623a1f6fd41b0b536a1d5328f0c6ec7260c98d3e
             logger = cfg[section][notifier]["logger"]
 
             for i in dir(imported_module):
@@ -96,11 +101,17 @@ class Supervisor(object):
                     concrete_notifier = attribute(
                       name=notifier,
                       logger=logger)
+<<<<<<< HEAD
                     self.logger.info(
                       "adding %s %s to alarm notifiers list",
                       imported_module.__name__ , str(attribute))
 
                     Alarm._get_notifiers().append(concrete_notifier)
+=======
+                    self.logger.info("adding " + imported_module.__name__ +  " "
+                      + str(attribute) + " to alarm notifiers list" )
+                    Alarm.alarm_notifiers.append(concrete_notifier)
+>>>>>>> 623a1f6fd41b0b536a1d5328f0c6ec7260c98d3e
 
                     # Populate module assign_parameters
                     PointManager().assign_parameters(
@@ -116,7 +127,7 @@ class Supervisor(object):
           logger="supervisory"
         )
 
-        Alarm.set_alarm_handler(self.alarm_handler)
+        Alarm.alarm_handler = self.alarm_handler
         self.threads.append(self.alarm_handler)
 
         # Create all of the custom threads.
@@ -206,7 +217,6 @@ class Supervisor(object):
         rpc_object.point_dict = PointManager().get_global_points()
         rpc_object.thread_list = self.threads
         rpc_object.get_hmi_point = PointManager().get_hmi_point
-        print(str(rpc_object.get_hmi_point))
 
         self.rpc_server = ThreadedServer(
           rpc_object,

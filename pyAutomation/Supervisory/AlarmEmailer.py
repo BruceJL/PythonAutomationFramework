@@ -27,6 +27,7 @@ class AlarmEmailer(AlarmNotifier):
         self.mail_receivers = ""
 
     def notify(self, alarm: Alarm, verb: str) -> None:
+        self.logger.info("notifying for %s to %s", alarm.description, verb)
         message = MIMEText(
             "Alarm: {} {} \n"
             "Consequences: {} \n"

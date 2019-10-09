@@ -46,6 +46,7 @@ pyAutomation/Hmi/__init__.py
 pyAutomation/Supervisory/AlarmEmailer.py
 pyAutomation/Supervisory/AlarmHandler.py
 pyAutomation/Supervisory/AlarmNotifier.py
+pyAutomation/Supervisory/Interruptable.py
 pyAutomation/Supervisory/PointHandler.py
 pyAutomation/Supervisory/PointManager.py
 pyAutomation/Supervisory/RpcServer.py
@@ -54,6 +55,7 @@ pyAutomation/Supervisory/__init__.py
 pyAutomation/test/AlarmAnalog_test.py
 pyAutomation/test/Alarm_test.py
 pyAutomation/test/PointAnalogDual_test.py
+pyAutomation/test/PointAnalogScaled_test.py
 pyAutomation/test/PointAnalog_test.py
 pyAutomation/test/PointDiscrete_test.py
 pyAutomation/test/PointEnumeration_test.py

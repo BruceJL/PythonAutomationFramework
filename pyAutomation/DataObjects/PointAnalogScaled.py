@@ -53,6 +53,9 @@ class PointAnalogScaled(PointAnalogReadOnlyAbstract):
     def _get_quality(self) -> 'bool':
         return self.point.quality
 
+    def _set_quality(self, q: 'bool') -> 'None':
+        self.point.quality = q
+
     quality = property(_get_quality)
 
     def _get_u_of_m(self) -> 'str':

@@ -109,9 +109,9 @@ class Point(PointAbstract, ABC):
               + "' to object " + type(self).__name__ + ", property does not exist"
 
             setattr(self, kw, kwargs[kw])
-            # print("assinging property of " + str(kwargs[kw]) + " to " + kw)
+            logger.info("assinging property of " + str(kwargs[kw]) + " to " + kw)
 
-        print(self.description + " point created.")
+        logger.info(self.description + " point created.")
 
     def config(self, n: 'str') -> 'None':
         logger.info("point " + n + " name assigned.")

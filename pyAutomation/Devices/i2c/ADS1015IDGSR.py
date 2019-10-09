@@ -115,10 +115,10 @@ class ADS1015IDGSR(i2cPrototype, PointHandler):
     # Texas Instruments 4 channel ADC ADS10
 
     _points_list = {
-      'port_0': {'type': 'PointAnalog',   'access': 'rw'},
-      'port_1': {'type': 'PointAnalog',   'access': 'rw'},
-      'port_2': {'type': 'PointAnalog',   'access': 'rw'},
-      'port_3': {'type': 'PointAnalog',   'access': 'rw'},
+      'port_0': {'type': 'PointAnalog', 'access': 'rw'},
+      'port_1': {'type': 'PointAnalog', 'access': 'rw'},
+      'port_2': {'type': 'PointAnalog', 'access': 'rw'},
+      'port_3': {'type': 'PointAnalog', 'access': 'rw'},
 
       'alarm_comm_fail':  {'type': 'Alarm', 'access': 'rw'},
     }
@@ -133,6 +133,7 @@ class ADS1015IDGSR(i2cPrototype, PointHandler):
         self.channels = []
         self.states = 8
         self._state = 0
+        self.is_setup = False
 
         self.port_0 = None
         self.port_1 = None
@@ -153,7 +154,8 @@ class ADS1015IDGSR(i2cPrototype, PointHandler):
         assert self.alarm_comm_fail is not None,\
           "Communications alarm is not configured."
 
-        return True
+        self.is_setup = True
+        return self.is_setup
 
     def _set_state(self, i):
         self.logger.debug("changing state from " + str(self._state)
