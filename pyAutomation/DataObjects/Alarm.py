@@ -13,9 +13,6 @@ logger = logging.getLogger('alarms')
 
 global_alarms = {}  # type: Dict['str', 'Alarm']
 
-# notifiers are global alarm watchers for all alarms. They are used for
-# logging and remote alarm notification (e.g. email).
-alarm_notifiers = [] # type: List[Callable[[str], None]]
 
 class Alarm(object):
     """
@@ -30,15 +27,11 @@ class Alarm(object):
       'consequences'
     ]
 
+    # notifiers are global alarm watchers for all alarms. They are used for
+    # logging and remote alarm notification (e.g. email).
+    alarm_notifiers = [] # type: List[Callable[[str], None]]
+
     alarm_handler = None
-
-    @staticmethod
-    def _get_notifiers():
-        return alarm_notifiers
-
-    @staticmethod
-    def set_alarm_handler(handler: 'AlarmHandler'):
-        Alarm.alarm_handler = handler
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
@@ -189,15 +182,15 @@ class Alarm(object):
     def alarm_state(self) -> str:
         """ Gets the human readable state of the alarm. """
         if self.blocked:
-            return "BLOCKED"  # ALARM BLOCKED
+            return "BLOCKED"       # ALARM BLOCKED
         if not self.active and self.acknowledged:
-            return "NORMAL"  # "ALARM NORMAL"
+            return "NORMAL"        # "ALARM NORMAL"
         elif self.active and not self.acknowledged:
-            return "ACTIVE"  # "ALARM ACTIVE"
+            return "ACTIVE"        # "ALARM ACTIVE"
         elif self.active and self.acknowledged:
             return "ACKNOWLEDGED"  # "ALARM ACKNOWLEDGED"
         elif not self.active and not self.acknowledged:
-            return "RESET"  # "ALARM RESET"
+            return "RESET"         # "ALARM RESET"
         else:
             return "LOGIC FAULT"
 
@@ -272,7 +265,7 @@ class Alarm(object):
             self._activation_time = datetime.datetime.now(datetime.timezone.utc)
 
             # fire off any remote notification if any
-            for notifier in alarm_notifiers:
+            for notifier in Alarm.alarm_notifiers:
                 notifier.notify(self, "activated")
 
         # The ALARM state.
@@ -288,8 +281,8 @@ class Alarm(object):
                     logger.debug("Alarm: " + self.name + " ALARM->OFF")
 
                     # fire off any remote notification if any
-                    for notifier in alarm_notifiers:
-                        notifier(self, "reset")
+                    for notifier in Alarm.alarm_notifiers:
+                        notifier.notify(self, "reset")
 
         # OFF_DELAY is used to prevent the alarm from clearing too quickly.
         # This is a tool to reduce alarm chatter.
@@ -304,8 +297,8 @@ class Alarm(object):
                 logger.debug("Alarm: " + self.name + " OFF_DELAY->OFF")
 
                 # fire off any remote notification if any
-                for notifier in alarm_notifiers:
-                    notifier(self, "reset")
+                for notifier in Alarm.alarm_notifiers:
+                    notifier.notify(self, "reset")
 
         # ALARM_RESET is a transitory state. Cleans up and returns to the OFF
         # state.

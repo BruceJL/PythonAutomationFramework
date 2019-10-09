@@ -272,14 +272,14 @@ class ProcessValue(PointAnalogReadOnlyAbstract):
 
         for k,v in value['control_points'].items():
             p.add_control_point(k, v)
-            print("    control point " + k + " added")
+            logger.info("    control point " + k + " added")
 
         for k,v in value['alarms'].items():
             p.add_alarm(k, v)
-            print("    alarm " + k + " added")
+            logger.info("    alarm " + k + " added")
 
         for k,v in value['related_points'].items():
             p.add_related_point(k, v)
-            print("    related point " + k + " added")
+            logger.info("    related point " + k + " added")
 
         return p

@@ -28,6 +28,7 @@ global_alarms = {}  # type: Dict[str, Alarm]
 global_process = {}  # type: Dict[str, ProcessValue]
 
 
+
 class PointManager:
 
     logger = None
@@ -42,6 +43,7 @@ class PointManager:
     yml.register_class(ProcessValue)
     yml.register_class(Alarm)
     yml.register_class(AlarmAnalog)
+
 
     @staticmethod
     def load_points(file: 'str') -> 'None':
@@ -72,7 +74,7 @@ class PointManager:
 
         # now that the dict is fully populated, setup all the point names.
         for k, o in global_points.items():
-            print("setting name for " + k)
+            PointManager.logger.info("setting name for " + k)
             o.config(k)
 
         for k, o in data['alarms'].items():
@@ -81,8 +83,8 @@ class PointManager:
               global_alarms[k] = o
               o.config(k)
 
-        #print("global alarms:")
-        #print(str(global_alarms))
+        # print("global alarms:")
+        # print(str(global_alarms))
 
     @staticmethod
     def assign_parameters(d: Dict[str, str], target):
@@ -94,8 +96,8 @@ class PointManager:
                   + " to " + target.name + " but it's not in the parameter list"
 
                 parameter_value = d['parameters'][parameter_name]
-                logging.info("assigning " + str(parameter_value) + " to " +
-                  parameter_name + " in module " + target.name)
+                PointManager().logger.info("assigning %s to %s in module %s",
+                  str(parameter_value), parameter_name, target.name)
 
                 target.__dict__[parameter_name] = parameter_value
 
@@ -112,7 +114,7 @@ class PointManager:
       target,
       object_point_name: str,
       database_point_name: str,
-      db_rw: str) -> None:
+      db_rw: str) -> 'None':
 
         assert target.point_name_valid(object_point_name), \
           object_point_name + " is not a valid point for " + target.name
@@ -137,11 +139,12 @@ class PointManager:
 
         type = target.get_point_type(object_point_name)
 
-        if   'PointAnalog'      == type \
-          or 'PointDiscrete'    == type \
-          or 'PointEnumeration' == type \
-          or 'PointAnalogDual'  == type \
-          or 'ProcessValue'     == type:
+        if   'PointAnalog'       == type \
+          or 'PointAnalogScaled' == type \
+          or 'PointDiscrete'     == type \
+          or 'PointEnumeration'  == type \
+          or 'PointAnalogDual'   == type \
+          or 'ProcessValue'      == type:
 
             if 'rw' == rw:
               target.__dict__[object_point_name] = \
