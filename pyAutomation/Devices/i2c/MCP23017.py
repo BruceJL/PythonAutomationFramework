@@ -147,25 +147,32 @@ class MCP23017(i2cPrototype, PointHandler):
             # IOCON DETAIL
             # bit 7 - BANK control register mapping
             # bit 6 - MIRROR - Internally connects Port pins.
-            # bit 5 - SEQOP sequential operation automatically increments address pointer
+            # bit 5 - SEQOP sequential operation automatically increments
+            #         address pointer
             # bit 4 - DISSLW Controls SDA slew rate
             # bit 3 - HAEN hardward address enable
             # bit 2 - ODR open drain. enables INT pin open drain configuration
             # bit 1 - INTPOL sets the polarity of the interrupt pin
             # bit 0 - unused
 
-            # Configure PORT A and B (1 = input, 0 = output) (IOBANK is 0 so writes are sequential)
-            self.logger.debug("Setting REG_A DIRECTION to " + hex(self.port_a_cfg))
-            self.logger.debug("Setting REG_B_DIRECTION to " + hex(self.port_b_cfg))
+            # Configure PORT A and B (1 = input, 0 = output) (IOBANK is 0 so
+            # writes are sequential)
+            self.logger.debug("Setting REG_A DIRECTION to %s",
+              hex(self.port_a_cfg))
+            self.logger.debug("Setting REG_B_DIRECTION to %s",
+              hex(self.port_b_cfg))
 
             b = [REG_A_DIRECTION, self.port_a_cfg, self.port_b_cfg]
             self.logger.debug("writing " + str(b) + " to device")
             self.dev.i2c(b, 0, 0.01)
 
-            [port_a_cfg_as_found, port_b_cfg_as_found] = self.dev.i2c([REG_A_DIRECTION], 2, 0.01)
+            [port_a_cfg_as_found, port_b_cfg_as_found] =\
+              self.dev.i2c([REG_A_DIRECTION], 2, 0.01)
 
-            self.logger.debug("REG_A_DIRECTION is now " + hex(port_a_cfg_as_found))
-            self.logger.debug("REG_B_DIRECTION is now " + hex(port_b_cfg_as_found))
+            self.logger.debug("REG_A_DIRECTION is now %s",
+              hex(port_a_cfg_as_found))
+            self.logger.debug("REG_B_DIRECTION is now %s",
+              hex(port_b_cfg_as_found))
 
             if (port_a_cfg_as_found == self.port_a_cfg
                     and port_b_cfg_as_found == self.port_b_cfg):
@@ -174,9 +181,9 @@ class MCP23017(i2cPrototype, PointHandler):
             else:
                 self.logger.debug("Setup failed.")
 
-        except EnvironmentError as e:
+        except OSError as e:
             self.is_setup = False
-            self.logger.error("I/O error on setup" + str(e))
+            self.logger.error("setup I/O error: %s", str(e))
 
         except Exception as e:
             self.logger.error(traceback.format_exc())
@@ -191,11 +198,9 @@ class MCP23017(i2cPrototype, PointHandler):
         self.logger.debug("Entering function")
 
         def _write_point(point, byte, index):
-            # self.logger.debug("Function entered, point is " + str(type(point)))
             if p is not None:
                 if type(point) is PointDiscrete:
                     b = (byte >> index) & 0x01
-                    # self.logger.debug("setting " +  point.description + " to " + str(b))
                     point.value = b
 
         try:
@@ -221,14 +226,13 @@ class MCP23017(i2cPrototype, PointHandler):
             _write_point(self.port_B7, self.port_b, 7)
 
             self.logger.debug(
-                "Read successful. next read at: "
-                + str(self.next_update))
+              "Read successful. next read at: %s", str(self.next_update))
 
             self.alarm_comm_fail.input = False
 
         except OSError as e:
             self.alarm_com_fail.input = True
-            self.logger.error("I/O error on read" + str(e))
+            self.logger.error("read I/O fault:" + str(e))
 
         except Exception as e:
             self.logger.error(traceback.format_exc())
@@ -259,7 +263,7 @@ class MCP23017(i2cPrototype, PointHandler):
 
     def data_updated(self, name):
         self._has_write_data = True
-        self.logger.debug("Got Interrupt from " + name)
+        self.logger.debug("Got Interrupt from %s", name)
 
     def write_data(self):
         # write data
@@ -298,8 +302,8 @@ class MCP23017(i2cPrototype, PointHandler):
             self.port_b = _update_value(self.port_B6, self.port_b, 6)
             self.port_b = _update_value(self.port_B7, self.port_b, 7)
 
-            self.logger.debug("writing " + hex(self.port_a) + " to port A")
-            self.logger.debug("writing " + hex(self.port_b) + " to port B")
+            self.logger.debug("writing %s to port A", hex(self.port_a))
+            self.logger.debug("writing %s to port B", hex(self.port_b))
 
             self.dev.i2c([REG_A, self.port_a, self.port_b], 0, 0.01)
 
@@ -312,26 +316,31 @@ class MCP23017(i2cPrototype, PointHandler):
             masked_port_a_actual = ~self.port_a_cfg & self.port_a
             masked_port_b_actual = ~self.port_b_cfg & self.port_b
 
-            self.logger.debug("port_a is now " + hex(self.port_a))
-            self.logger.debug("port_b is now " + hex(self.port_b))
+            self.logger.debug("port_a is now %s", hex(self.port_a))
+            self.logger.debug("port_b is now %s", hex(self.port_b))
 
             if masked_port_a_expected != masked_port_a_actual \
                     or masked_port_b_expected != masked_port_b_actual:
                 self.logger.error("data write was unsuccessful")
 
                 if masked_port_a_expected != masked_port_a_actual:
-                    self.logger.error("port A is: " + hex(masked_port_a_actual)
-                                      + " should be " + hex(masked_port_a_expected))
+                    self.logger.error("port A is: %s should be %s",
+                    hex(masked_port_a_actual),
+                    hex(masked_port_a_expected)
+                )
 
                 if masked_port_b_expected != masked_port_b_actual:
-                    self.logger.error("port B is: " + hex(masked_port_b_actual)
-                                      + " should be " + hex(masked_port_b_expected))
+                    self.logger.error(
+                      "port B is: %s should be %s",
+                      hex(masked_port_b_actual),
+                      hex(masked_port_b_expected)
+                    )
             else:
                 self._has_write_data = False
                 self.logger.debug("Write successful")
 
         except OSError as e:
-            self.logger.debug("I/O error:" + str(e))
+            self.logger.error("write I/O fault: %s", str(e))
         except Exception as e:
             self.logger.error(traceback.format_exc())
         finally:
@@ -348,22 +357,25 @@ class MCP23017(i2cPrototype, PointHandler):
             config_byte = config_byte | b
 
             if point is not None:
-                self.logger.debug("Setting point " + point.name + " (" + str(index) +
-                                  ") bit to 1 by or'ing with " + hex(b))
+                self.logger.debug(
+                  "Setting point %s (%s) bit to 1 by or'ing with %s",
+                  point.name, str(index), hex(b))
+
         elif type(point) is PointReadOnly:
             # This point is read only by the driver and therefor an output.
             # write a zero to the configuration register bit.
             b = ~(0x01 << index)
             config_byte = config_byte & b
-            self.logger.debug("Setting point " + point.name + " (" + str(index)
-                              + ") bit to 0 by anding with " + hex(b))
+            self.logger.debug(
+              "Setting point %s (%s) bit to 0 by anding with %s",
+              point.name,  str(index),  hex(b))
 
             # add an observer to the point
             point.add_observer(self.name, self.data_updated)
         else:
             raise ValueError("Invalid object type of " + str(type(point)) + " supplied.")
 
-        self.logger.debug("config byte is now " + hex(config_byte))
+        self.logger.debug("config byte is now %s", hex(config_byte))
         return config_byte
 
     def config(self):

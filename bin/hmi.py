@@ -16,13 +16,6 @@ from ruamel import yaml
 from typing import List, Dict
 
 import pyAutomation.Hmi.Common
-from pyAutomation.Hmi.AlarmWindow import AlarmWindow
-from pyAutomation.Hmi.AlarmAnalogWindow import AlarmAnalogWindow
-from pyAutomation.Hmi.ProcessValueWindow import ProcessValueWindow
-from pyAutomation.Hmi.PointEnumerationWindow import PointEnumerationWindow
-from pyAutomation.Hmi.PointAnalogWindow import PointAnalogWindow
-from pyAutomation.Hmi.PointDiscreteWindow import PointDiscreteWindow
-
 
 # setup the logger
 logger = logging.getLogger('hmi')
@@ -31,9 +24,9 @@ logger.setLevel(logging.DEBUG)
 logger.handlers = []
 
 fh = RotatingFileHandler(
-    './logs/hmi.log',
-    maxBytes=2048000,
-    backupCount=1)
+  './logs/hmi.log',
+  maxBytes=2048000,
+  backupCount=1)
 
 formatter = logging.Formatter(
     '%(asctime)s - %(levelname)s - %(module)s.%(funcName)s() - %(message)s')
@@ -43,28 +36,37 @@ logger.addHandler(fh)
 
 class CursesHmi(object):
 
-    def load_page_points(self, i: int):
-        self.points = {}
-        logic_server_conn.root.clear_monitored_points()
-        logic_server_conn.root.add_monitored_points(self.pages[i]['points'])
-
     def __init__(self, config):
         self.quit = False           # type: 'bool'
         self.mode = "POINTS"        # type: 'str'
         self.highlighted_point = 0  # type: 'int'
-        self.current_page = -1      # type 'int'
+        self.current_page = -1      # type: 'int'
         self.pages = []             # type: 'List[Dict]'
         self.failed = False         # type: 'bool'
+        self.server = None          # type: 'str'
+        self.server_port = None     # type: 'int'
+        self.logic_server_conn = None
 
         # open the supplied yaml file.
         with open(config, 'r') as ymlfile:
             cfg = yaml.safe_load(ymlfile)
 
-        for page in cfg:
-            points = cfg[page]['points']
+        self.server = cfg['server']['host']
+        self.server_port = cfg['server']['port']
+
+        self.logic_server_conn = rpyc.connect(
+          self.server,
+          self.server_port,
+          config={"allow_all_attrs": True}
+        )
+
+        pyAutomation.Hmi.Common.logic_server_conn = self.logic_server_conn
+
+        for page in cfg['pages']:
+            points = cfg['pages'][page]['points']
             self.pages.append({
               'title': page,
-              'points' : points,
+              'points': points,
             })
 
         assert len(self.pages) > 0, \
@@ -90,32 +92,17 @@ class CursesHmi(object):
         # setup ncurses
         os.environ.setdefault('ESCDELAY', '25')
 
-    def hmi_interact(self, o) -> None:
-        logger.debug("Entering Function for " + o.name)
-        if o.hmi_object_name == "AlarmWindow":
-            win = AlarmWindow(o)
-            win.hmi_get_user_input()
-        elif o.hmi_object_name == "AlarmAnalogWindow":
-            win = AlarmAnalogWindow(o)
-            win.hmi_get_user_input()
-        elif o.hmi_object_name == "ProcessValueWindow":
-            win = ProcessValueWindow(o)
-            win.hmi_get_user_input()
-        elif o.hmi_object_name == "PointAnalogWindow":
-            win = PointAnalogWindow(o)
-            win.hmi_get_user_input()
-        elif o.hmi_object_name == "PointDiscreteWindow":
-            win = PointDiscreteWindow(o)
-            win.hmi_get_user_input()
-        elif o.hmi_object_name == "PointEnumerationWindow":
-            win = PointEnumerationWindow(o)
-            win.hmi_get_user_input()
-            logger.debug("Leaving function")
+    def load_page_points(self, i: int):
+        self.points = {}
+        self.logic_server_conn.root.exposed_clear_monitored_points()
+        self.logic_server_conn.root.exposed_add_monitored_points(
+          self.pages[i]['points']
+        )
 
     def get_point_name(self, p):
         logger.debug("looking for point " + str(p))
         for k, v in self.points.items():
-            logger.debug(k + " (" + str(v) + ") isn't it.")
+            # logger.debug(k + " (" + str(v) + ") isn't it.")
             if v == p:
                 return k
         assert False, \
@@ -129,11 +116,11 @@ class CursesHmi(object):
             while not self.quit:
 
                 points_json_data = \
-                    logic_server_conn.root.exposed_get_hmi_points_list()
+                    self.logic_server_conn.root.exposed_get_hmi_points_list()
                 alarms_json_data = \
-                    logic_server_conn.root.exposed_get_active_alarm_list()
+                    self.logic_server_conn.root.exposed_get_active_alarm_list()
                 threads_json_data = \
-                    logic_server_conn.root.exposed_get_thread_list()
+                    self.logic_server_conn.root.exposed_get_thread_list()
 
                 json_points = jsonpickle.decode(points_json_data)
                 json_alarms = jsonpickle.decode(alarms_json_data)
@@ -150,7 +137,7 @@ class CursesHmi(object):
                             else:
                                 # point doesn't exist, make a new entry
                                 self.points[k] = point
-                                logger.info("Registering point: " + k)
+                                logger.info("Registering point: %s ", k)
                     else:
                         logger.info("Received empty points list from server")
 
@@ -167,12 +154,12 @@ class CursesHmi(object):
 
             # Something didn't work so output the last recieved network data
             if self.failed:
-                j = json.loads(points_json_data)
-                logger.info("point data: %s",
-                            json.dumps(j, indent=4, sort_keys=True))
-                j = json.loads(threads_json_data)
-                logger.info("thread data: %s ",
-                            json.dumps(j, indent=4, sort_keys=True))
+                # j = json.loads(points_json_data)
+                # logger.info("point data: %s",
+                #             json.dumps(j, indent=4, sort_keys=True))
+                # j = json.loads(threads_json_data)
+                # logger.info("thread data: %s ",
+                #             json.dumps(j, indent=4, sort_keys=True))
                 self.exit()
 
                 self.get_network_data_condition.wait(0.5)
@@ -295,7 +282,7 @@ class CursesHmi(object):
             # calculate the column widths
             columns = [3, 0, 0, 0, 0, 0]
             for thread in self.threads:
-                logger.debug("thread data: %s", str(thread))
+
                 size = len(thread['name'])
                 if size > columns[1]:
                     columns[1] = size
@@ -491,9 +478,9 @@ class CursesHmi(object):
                     if len(self.points) > 0:
                         if c == 10 or c == 13:
                             p = self.points[keys[self.highlighted_point]]
-                            logger.debug("Enter pressed on: " + p.name)
+                            logger.debug("Enter pressed on: %s", p.name)
                             pyAutomation.Hmi.Common.screen.keypad(False)
-                            self.hmi_interact(p)
+                            pyAutomation.Hmi.Common.hmi_interact(p)
                             pyAutomation.Hmi.Common.screen.keypad(True)
 
                         elif c == curses.KEY_F11:  # Toggle force
@@ -522,7 +509,8 @@ class CursesHmi(object):
                             alarms[self.highlighted_point].blocked = \
                                 not alarms[self.highlighted_point].blocked
                         elif c in (10, 13):
-                            self.hmi_interact(alarms[self.highlighted_point])
+                            pyAutomation.Hmi.Common.hmi_interact(
+                              alarms[self.highlighted_point])
                         else:
                             pass
 
@@ -535,7 +523,5 @@ class CursesHmi(object):
 
 
 if __name__ == "__main__":
-    logic_server_conn = rpyc.connect("localhost", 18861, config={"allow_all_attrs": True})
-    pyAutomation.Hmi.Common.logic_server_conn = logic_server_conn
     cursesHmi = CursesHmi(config=sys.argv[1])
     curses.wrapper(cursesHmi.start_gui)

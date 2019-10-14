@@ -1,12 +1,11 @@
 import logging
 from datetime import datetime, timedelta
-from .PointAbstract import PointAbstract
+from pyAutomation.DataObjects.PointAbstract import PointAbstract
 from abc import abstractmethod, ABC
 from typing import Dict, TYPE_CHECKING, Any, Callable, List
-from ruamel import yaml
 
 if TYPE_CHECKING:
-    from DataObjects.Alarm import Alarm
+    from pyAutomation.DataObjects.Alarm import Alarm
 
 logger = logging.getLogger('controller')
 
@@ -48,13 +47,13 @@ class Point(PointAbstract, ABC):
     def __init__(self, **kwargs: object) -> None:
 
         # human readable description of the point
-        self.description = "No description"
+        self._description = "No description"
 
         # name of the point in the global point dict.
         self._name = None
 
         # object that is able to write to this point.
-        self._writer = None # type: object
+        self._writer = None  # type: object
 
         # point will accept requested values from non-owner processes.
         self.requestable = False  # type: bool
@@ -62,7 +61,8 @@ class Point(PointAbstract, ABC):
         # value being requested of the point by a non-owner process
         self._request_value = None  # type: object
 
-        # Point is in a forced state (i.e. the value is only writable from the HMI
+        # Point is in a forced state (i.e. the value is only writable from
+        # the HMI)
         self._forced = False  # type: bool
 
         # the time the point was last updated.
@@ -99,27 +99,31 @@ class Point(PointAbstract, ABC):
             s = kwargs['update_period']
             if s is not None:
                 assert isinstance(s, float),\
-                  "invalid update period: " + str(s) + " supplied for " + kwargs['description']
+                    "invalid update period: " + str(s) \
+                    + " supplied for " + kwargs['description']
                 t = timedelta(seconds=s)
                 kwargs['update_period'] = t
 
         for kw in kwargs:
             assert kw in self.keywords, \
-              "Cannot assign property '" + str(kw) \
-              + "' to object " + type(self).__name__ + ", property does not exist"
+                "Cannot assign property '" + str(kw) \
+                + "' to object " + type(self).__name__ \
+                + ", property does not exist"
 
             setattr(self, kw, kwargs[kw])
-            logger.info("assinging property of " + str(kwargs[kw]) + " to " + kw)
+            logger.info("assinging property of %s to %s", kwargs[kw], kw)
 
-        logger.info(self.description + " point created.")
+        logger.info("point '%s'  created.", self.description)
 
     def config(self, n: 'str') -> 'None':
-        logger.info("point " + n + " name assigned.")
+        # assert n.find('.') == -1, \
+        #     "illegal character (.) found in point name: " + n
+
+        logger.info("point %s name assigned.", n)
         self._name = n
         self.sanity_check()
 
     _keywords = [
-      #'name',
       'description',
       'requestable',
       'retentive',
@@ -149,25 +153,19 @@ class Point(PointAbstract, ABC):
           "name is not populated for '" + self.description + "'."
         return self._name
 
-    # def _set_name(self, n) -> None:
-    #     if(self._name is None):
-    #         self._name = n
-    #     else:
-    #         assert self._name != "", \
-    #           "Point has already been assigned a name."
-    #     self._name = n
-    #     print("point " + n + " assigned.")
-
     name = property(_get_name)
 
-    def add_observer(self, name: 'str', observer: 'Callable[str, None]') -> 'None':
+    def add_observer(
+      self,
+      name: 'str',
+      observer: 'Callable[str, None]') -> 'None':
         self._observers.update({name: observer})
         if self._name is not None:
-            logger.info("observer: " + name + " added to point " + self.name)
+            logger.info("observer: %s added to point %s", name, self.name)
 
     def del_observer(self, name: 'str') -> 'None':
         self._observers.pop(name)
-        logger.info("observer: " + name + " removed from point " + self.name)
+        logger.info("observer: %s removed from point %s", name, self.name)
 
     # value
     # Used to access to the point from the owner process.
@@ -182,7 +180,8 @@ class Point(PointAbstract, ABC):
             self._quality = True
             self.last_update = datetime.now()
             try:
-                if self.update_period is not None and self.update_period > timedelta.min:
+                if self.update_period is not None\
+                  and self.update_period > timedelta.min:
                     while self.next_update < datetime.now():
                         self.next_update += self.update_period
             except AttributeError:
@@ -198,13 +197,17 @@ class Point(PointAbstract, ABC):
 
                     if self._writer is not None:
                         assert self.name is not None,\
-                          self.description + " attempted callback without identifer."
+                            self.description \
+                            + " attempted callback without identifer."
 
                         assert self.name != '',\
-                          self.description + " attempted callback without identifer."
+                            self.description \
+                            + " attempted callback without identifer."
 
                         for callback in self._observers.values():
-                            callback(name=self._writer.name + "  > " + self.name)
+                            callback(
+                              name=self._writer.name + "  > " + self.name
+                            )
 
             except AttributeError:
                 self._value = v
@@ -258,39 +261,42 @@ class Point(PointAbstract, ABC):
         return self.value
 
     def _set_hmi_value(self, value: str):
-        # Note that the behaviour changes depending upon if the point is forced or not.
-        # A forced point is written directly to, an unforced point has a entry made in the
-        # request field.
+        # Note that the behaviour changes depending upon if the point is
+        # forced or not. A forced point is written directly to, an unforced
+        # point has a entry made in the request field.
         if self._forced:
             if self.value != value:
-                logger.warn(
-                    "Doing a forced write of " + str(value) + " to "
-                    + self.description)
+                logger.error(
+                  "Doing a forced write of %s to %s", value, self.description)
                 self.forced_value = value
                 self._last_update = datetime.now()
-                assert self.value == value, "Forcing " + value + " to " \
-                                            + self.description + " failed."
+                assert self.value == value, \
+                    "Forcing " + value + " to " + self.description + " failed."
             else:
-                logger.warn("But " + self.description + " is already "
-                             + str(value) + " so no action was taken.")
+                logger.error(
+                  "But %s is already %s so no action was taken.",
+                  self.description, value)
 
         # Queue a write of the point if it's an R/W point
         elif self.hmi_writeable:  # and self.requestable:
             logger.info(
-                "HMI request_value of " + str(value) + " written to "
-                + self.description)
+              "HMI request_value of %s written to %s", value, self.description)
+
             if self.requestable:
-                # This point is managed by a thread, so submit it to the thread for handling.
+                # This point is managed by a thread, so submit it to the
+                # thread for handling.
                 self.request_value = value
             else:
-                # This point is not managed by a process, so allow a value to be written to it.
+                # This point is not managed by a process, so allow a value to
+                # be written to it.
                 self.value = value
         else:
-            raise Exception(
-                "HMI tried to write to: " + self.description
-                + " but it's not forced, hmi_writeable, or requestable")
+            assert False,\
+                "HMI tried to write to: " + self.description \
+                + " but it's not forced, hmi_writeable, or requestable"
 
-    # hmi_value is access by the sub classes, so we cannot use the property decorator
+    # hmi_value is access by the sub classes, so we cannot use the property
+    # decorator
     hmi_value = property(_get_hmi_value, _set_hmi_value)
 
     # The Hmi is allowed to edit the point
@@ -351,7 +357,6 @@ class Point(PointAbstract, ABC):
 
     def _set_quality(self, value) -> 'None':
         if not self._forced and self._quality != value:
-            # logger.debug("Updating quality of " + self.description + " to " + str(value))
             self._quality = value
             self._last_update = datetime.now()
 
@@ -371,7 +376,7 @@ class Point(PointAbstract, ABC):
 
     @abstractmethod
     def data_display_width(self) -> int:
-         raise NotImplementedError("Not implemented")
+        raise NotImplementedError("Not implemented")
 
     # values for live object data for transport over JSON.
     def __getstate__(self) -> 'Dict[str, Any]':

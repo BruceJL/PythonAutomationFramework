@@ -37,12 +37,12 @@ def _create_check_sum(data):
 
 class K30(i2cPrototype, PointHandler):
 
-    points = {
-        'point_co2_level': 'get_point_rw',
-        'point_calibration_running': 'get_point_rw',
-        'point_abc_period': 'get_point_rw',
+    _points_list = {
+      'point_co2_level':           {'type': 'PointAnalog',   'access': 'rw'},
+      'point_calibration_running': {'type': 'PointDiscrete', 'access': 'rw'},
+      'point_abc_period':          {'type': 'PointAnalog',   'access': 'rw'},
 
-        'alarm_comm_fail': {'type': "Alarm", 'access': 'rw'},
+      'alarm_comm_fail':           {'type': "Alarm", 'access': 'rw'},
     }
 
     parameters = {}
@@ -78,9 +78,20 @@ class K30(i2cPrototype, PointHandler):
 
     def setup(self):
         # Do a sanity check
+        assert self.point_co2_level is not None,\
+          "CO2 level point is not configured."
+
+        assert self.point_abc_period is not None,\
+          "ABC period point is not configured."
+
         assert self.alarm_comm_fail is not None,\
           "Communications alarm is not configured."
-        return True
+
+        assert self.point_calibration_running is not None,\
+          "CO2 calibration running point is not configured."
+
+        self.is_setup = True
+        return self.is_setup
 
     def read_data(self):
         self.logger.debug("Entering function.")
@@ -119,7 +130,7 @@ class K30(i2cPrototype, PointHandler):
         except OSError as e:
             self.alarm_comm_fail.input = True
             self.consecutive_faults += 1
-            self.logger.info("I/O fault " + str(self.consecutive_faults) + str(e))
+            self.logger.info("read I/O fault " + str(self.consecutive_faults) + str(e))
 
         except Exception as e:
             self.logger.error(traceback.format_exc())
@@ -209,9 +220,11 @@ class K30(i2cPrototype, PointHandler):
                 if _validate_checksum(b):
                     # Was the write successful? see manual page 30.
                     if b[0] == 0x11:
+                        self.logger.info(
+                          "K30 write ABC Period of %s successful."
+                        )
                         self.point_abc_period.request_value = None
                         # Queue a read.
-                        self.logger.info("K30 write ABC Period command successful.")
                     else:
                         self.logger.info("K30 write ABC Period command unsuccessful.")
                 else:
@@ -225,6 +238,7 @@ class K30(i2cPrototype, PointHandler):
 
     def config(self):
         self.device_points = [
-            self.point_co2_level,
-            self.point_calibration_running,
-            self.point_abc_period]
+          self.point_co2_level,
+          self.point_calibration_running,
+          self.point_abc_period,
+        ]

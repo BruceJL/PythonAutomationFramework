@@ -8,7 +8,7 @@ from pyAutomation.DataObjects.AlarmAnalog import AlarmAnalog
 from .AbstractWindow import AbstractWindow
 import curses
 import logging
-import pyAutomation.Hmi.Common 
+import pyAutomation.Hmi.Common
 
 logger = logging.getLogger('hmi')
 
@@ -28,7 +28,9 @@ class AlarmAnalogWindow(AbstractWindow):
         data_width = len("NEW_ALARM")
         data_width += 3
 
-        logger.debug("Description_width: " + str(description_width) + " data_width: " + str(data_width))
+        logger.debug(
+          "Description_width: %s  data_width: %s ",
+          description_width, data_width)
 
         i = len(self.p.description)
         i += 6

@@ -70,12 +70,6 @@ def format_debug_data(s, data):
 # AMS TMD3782 color sensor
 class TMD3782(i2cPrototype, PointHandler):
 
-    points = {
-      'point_clear_light_level': 'get_point_rw',
-      'point_red_light_level': 'get_point_rw',
-      'point_green_light_level': 'get_point_rw',
-      'point_blue_light_level': 'get_point_rw',
-    }
     _points_list = {
       'point_clear_light_level': {'type': 'PointAnalog', 'access': 'rw'},
       'point_red_light_level':   {'type': 'PointAnalog', 'access': 'rw'},
@@ -83,7 +77,7 @@ class TMD3782(i2cPrototype, PointHandler):
       'point_blue_light_level':  {'type': 'PointAnalog', 'access': 'rw'},
 
       'alarm_comm_fail': {'type': "Alarm", 'access': 'rw'},
-     }
+    }
 
     parameters = {}
 
@@ -94,7 +88,7 @@ class TMD3782(i2cPrototype, PointHandler):
         self.point_green_light_level = None  # type: 'PointAnalogAbstract'
         self.point_blue_light_level = None   # type: 'PointAnalogAbstract'
         self.dev = None                      # type: 'int'
-        self.device_points = None            # type: 'List[PointAnalog]''
+        self.device_points = None            # type: 'List[PointAnalog]'
         self.alarm_comm_fail = None          # type: 'Alarm'
 
         super().__init__(
@@ -102,7 +96,7 @@ class TMD3782(i2cPrototype, PointHandler):
           logger=logger)
 
     def reset(self):
-        self._setup()
+        self.setup()
 
     def setup(self):
         assert self.alarm_comm_fail is not None,\
@@ -121,9 +115,11 @@ class TMD3782(i2cPrototype, PointHandler):
             # bit 0 power on : 1
 
             data = [CMD_WRITE | CMD_REPEATED_BYTE_PROTOCOL | REG_ENABLE, 0x03]
-            self.logger.debug(format_debug_data("writing 0x03 to REG_ENABLE - Sending: ", data))
+            self.logger.debug(
+              format_debug_data(
+                "writing 0x03 to REG_ENABLE - Sending: %s", data))
             b = self.dev.i2c(data, 1, 0.01)
-            self.logger.debug(format_debug_data("device returned: ", b))
+            self.logger.debug(format_debug_data("device returned: %s", b))
 
             # write to REG_CONTROL to configure gain.
             # bit 7:6 Proximity driving power : 00
@@ -136,18 +132,20 @@ class TMD3782(i2cPrototype, PointHandler):
             #                     11 for 60x gain
 
             data = [CMD_WRITE | CMD_REPEATED_BYTE_PROTOCOL | REG_CONTROL, 0x13]
-            self.logger.debug(format_debug_data("writing 0x13 to REG_CONTROL Sending: ", data))
+            self.logger.debug(
+              format_debug_data("writing 0x13 to REG_CONTROL Sending: ", data))
             b = self.dev.i2c(data, 1, 0.01)
             self.logger.debug(format_debug_data("device returned: ", b))
 
             data = [CMD_WRITE | CMD_REPEATED_BYTE_PROTOCOL | REG_ENABLE]
-            self.logger.debug(format_debug_data("Reading from REG_ENABLE - Sending: ", data))
+            self.logger.debug(
+              format_debug_data("Reading from REG_ENABLE - Sending: ", data))
             b = self.dev.i2c(data, 1, 0.01)
             self.logger.debug(format_debug_data("device returned:  ", b))
 
             self.is_setup = True
         except OSError as e:
-            self.logger.info("I/O fault " + str(e))
+            self.logger.error("I/O fault %s", str(e))
         finally:
             if self.dev is not None:
                 self.dev.close()
@@ -178,9 +176,11 @@ class TMD3782(i2cPrototype, PointHandler):
             # 8 - 0x1B - blue high byte
 
             data = [CMD_WRITE | CMD_AUTO_INCREMENT_PROTOCOL | REG_STATUS]
-            self.logger.debug(format_debug_data("Reading data sending: ", data))
+            self.logger.debug(
+              format_debug_data("Reading data - sending: ", data))
             b = self.dev.i2c(data, 9, 0.01)
-            self.logger.debug(format_debug_data("device returned: ", b))
+            self.logger.debug(
+              format_debug_data("device returned: ", b))
 
             if b[0] & 0x01:
                 # analog signals are valid
@@ -190,13 +190,14 @@ class TMD3782(i2cPrototype, PointHandler):
                 self.point_green_light_level.value = (b[6] << 8 | b[5])
                 self.point_blue_light_level.value = (b[8] << 8 | b[7])
                 self.alarm_comm_fail.input = False
+                # self.logger.debug("Clear light level: %s", self.point_clear_light_level.value)
             else:
-                self.logger.warn("data not read successfully")
+                self.logger.warn("data read unsuccessful")
                 self.is_setup = False
                 self.alarm_comm_fail.input = True
 
         except OSError as e:
-            self.logger.error("I/O fault " + str(e))
+            self.logger.error("I/O fault %s", str(e))
             self.alarm_comm_fail.input = True
 
         finally:
@@ -210,12 +211,11 @@ class TMD3782(i2cPrototype, PointHandler):
                 self.point_blue_light_level.quality = False
 
     def config(self):
-
         self.device_points = [
-            self.point_clear_light_level,
-            self.point_red_light_level,
-            self.point_green_light_level,
-            self.point_blue_light_level
+          self.point_clear_light_level,
+          self.point_red_light_level,
+          self.point_green_light_level,
+          self.point_blue_light_level,
         ]
 
         self.point_clear_light_level.quality = False

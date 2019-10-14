@@ -1,9 +1,8 @@
-from .PointAnalogAbstract import PointAnalogAbstract
-from .PointAnalogReadOnlyAbstract import PointAnalogReadOnlyAbstract
-from .PointReadOnly import PointReadOnly
-from .Point import Point
+from pyAutomation.DataObjects.PointAnalogAbstract import PointAnalogAbstract
+from pyAutomation.DataObjects.PointAnalogReadOnlyAbstract import PointAnalogReadOnlyAbstract
+from pyAutomation.DataObjects.PointReadOnly import PointReadOnly
+from pyAutomation.DataObjects.Point import Point
 from typing import Dict, Any, List
-from ruamel import yaml
 
 
 class PointAnalog(Point, PointAnalogAbstract):
@@ -15,8 +14,8 @@ class PointAnalog(Point, PointAnalogAbstract):
     keywords = property(_get_keywords)
 
     def __init__(self, **kwargs: object) -> None:
-        self.u_of_m = None  # type: str
-        self._value = 0.0  # type: float
+        self._u_of_m = None  # type: 'str'
+        self._value = 0.0  # type: 'float'
         super().__init__(**kwargs)
 
     # human readable value
@@ -24,6 +23,8 @@ class PointAnalog(Point, PointAnalogAbstract):
     def human_readable_value(self) -> 'str':
         if self._value is not None and self.u_of_m is not None:
             return str(round(self._value, 2)) + " " + self.u_of_m
+        elif self._value is not None:
+            return str(round(self._value, 2))
         else:
             return "***"
 
@@ -36,7 +37,7 @@ class PointAnalog(Point, PointAnalogAbstract):
     def data_display_width(self) -> 'int':
         return len(self.human_readable_value)
 
-    def _set_hmi_value(self, v: str):
+    def _set_hmi_value(self, v: 'str'):
         super()._set_hmi_value(float(v))
 
     def _get_hmi_value(self):
@@ -72,12 +73,6 @@ class PointAnalog(Point, PointAnalogAbstract):
     def __setstate__(self, d: 'Dict[str, Any]') -> 'None':
         super().__setstate__(d)
         self._u_of_m = d['u_of_m']
-
-    # Get an object suitable for storage in a yaml file.
-    def _get_yamlable_object(self) -> 'PointAbstract':
-        return self
-
-    yamlable_object = property(_get_yamlable_object)
 
     # YAML representation for configuration storage.
     def _get_yaml_dict(self) -> 'Dict[str, Any]':

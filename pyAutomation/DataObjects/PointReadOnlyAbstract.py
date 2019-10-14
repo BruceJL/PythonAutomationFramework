@@ -1,6 +1,9 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import List, Callable
+from typing import Callable, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pyAutomation.DataObjects.PointAbstract import PointAbstract
 
 class PointReadOnlyAbstract(ABC):
 
@@ -74,11 +77,14 @@ class PointReadOnlyAbstract(ABC):
 
     # observers
     @abstractmethod
-    def add_observer(name: 'str', observer: 'Callable[str,None]') -> 'None':
+    def add_observer(
+      self,
+      name: 'str',
+      observer: 'Callable[str,None]') -> 'None':
         pass
 
     @abstractmethod
-    def del_observer(name: 'str') -> 'None':
+    def del_observer(self, name: 'str') -> 'None':
         pass
 
     # Human readable value for HMI usage.

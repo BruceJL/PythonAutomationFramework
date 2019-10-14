@@ -286,7 +286,7 @@ class ADS1015IDGSR(i2cPrototype, PointHandler):
                 + str(self.next_update))
 
         except OSError as e:
-            self.logger.debug("Encounted OSError " + str(e))
+            self.logger.error("I/O fault " + str(e))
             self.alarm_comm_fail.input = True
             if 0 == self.state or 1 == self.state:
                 # self.point_0.quality = False

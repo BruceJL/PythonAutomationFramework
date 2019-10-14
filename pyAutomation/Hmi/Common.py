@@ -4,6 +4,13 @@ import curses
 import logging
 import threading
 
+from pyAutomation.Hmi.AlarmWindow import AlarmWindow
+from pyAutomation.Hmi.AlarmAnalogWindow import AlarmAnalogWindow
+from pyAutomation.Hmi.ProcessValueWindow import ProcessValueWindow
+from pyAutomation.Hmi.PointEnumerationWindow import PointEnumerationWindow
+from pyAutomation.Hmi.PointAnalogWindow import PointAnalogWindow
+from pyAutomation.Hmi.PointDiscreteWindow import PointDiscreteWindow
+
 # setup the logger
 logger = logging.getLogger('hmi')
 logger.propagate = False
@@ -21,6 +28,28 @@ gui_loop_condition = threading.Condition()
 screen = None
 modal_windows = []
 logic_server_conn = None
+
+
+def hmi_interact(o) -> None:
+    if o.hmi_object_name == "AlarmWindow":
+        win = AlarmWindow(o)
+        win.hmi_get_user_input()
+    elif o.hmi_object_name == "AlarmAnalogWindow":
+        win = AlarmAnalogWindow(o)
+        win.hmi_get_user_input()
+    elif o.hmi_object_name == "ProcessValueWindow":
+        win = ProcessValueWindow(o)
+        win.hmi_get_user_input()
+    elif o.hmi_object_name == "PointAnalogWindow":
+        win = PointAnalogWindow(o)
+        win.hmi_get_user_input()
+    elif o.hmi_object_name == "PointDiscreteWindow":
+        win = PointDiscreteWindow(o)
+        win.hmi_get_user_input()
+    elif o.hmi_object_name == "PointEnumerationWindow":
+        win = PointEnumerationWindow(o)
+        win.hmi_get_user_input()
+        logger.debug("Leaving function")
 
 
 # Update a dict with new properties
@@ -59,14 +88,15 @@ def update_object(local, remote, path: str) -> None:
 
 # Draws a representation of a point on the screen with all the appropriate
 # coloring.
-def draw_property(s,
-                  y: int,
-                  description_width: int,
-                  data_width: int,
-                  description: str,
-                  highlighted: bool,
-                  value: str,
-                  value_color) -> None:
+def draw_property(
+  s,
+  y: int,
+  description_width: int,
+  data_width: int,
+  description: str,
+  highlighted: bool,
+  value: str,
+  value_color) -> None:
     if highlighted:
         color = curses.color_pair(3)
     else:
@@ -98,7 +128,6 @@ def get_point_curses_color(point) -> object:
 # Get the highlighting color for an alarm
 def get_alarm_curses_color(alarm) -> object:
     i = alarm.alarm_state
-    logger.debug("")
 
     if i == "NORMAL":
         # "ALARM NORMAL"
@@ -126,22 +155,24 @@ def write_hmi_point(point, value) -> None:
 
 # Rpyc calls here
 def write_to_point(name: str, value: str) -> None:
-    logger.info("writing " + value + " to " + name)
-    logic_server_conn.root.exposed_set_hmi_value(name, value)
-
+    logger.info("writing %s to %s", value, name)
+    try:
+        logic_server_conn.root.exposed_set_hmi_value(name, value)
+    except Exception as e:
+        logger.error("write failed with exception:\n %s", e)
 
 def acknowledge_alarm(name: str) -> None:
-    logger.info("acknowledging: " + name)
+    logger.info("acknowledging: %s", name)
     logic_server_conn.root.exposed_acknowledge_alarm(name)
 
 
 def toggle_point_quality(name: str) -> None:
-    logger.info("toggling quality: " + name)
+    logger.info("toggling quality: %s", name)
     logic_server_conn.root.exposed_toggle_point_quality(name)
 
 
 def toggle_point_force(name: str) -> None:
-    logger.info("toggling force: " + name)
+    logger.info("toggling force: %s", name)
     logic_server_conn.root.exposed_toggle_point_force(name)
 
 

@@ -60,7 +60,8 @@ class Supervisor(object):
               maxBytes=cfg[section][logger]['maxBytes'],
               backupCount=cfg[section][logger]['backupCount'],
               encoding=None,
-              delay=False)
+              delay=False,
+            )
             fh.setFormatter(formatter)
             l.addHandler(fh)
 
@@ -71,7 +72,7 @@ class Supervisor(object):
 
         # load the point database(s).
         for file in point_database_yaml_files:
-            self.logger.info("loading file: " + file)
+            self.logger.info("loading file: %s", file)
             PointManager().load_points(file)
 
         # Setup the alarm notifiers.
@@ -83,40 +84,32 @@ class Supervisor(object):
               cfg[section][notifier]["module"],
               cfg[section][notifier]["package"])
 
-<<<<<<< HEAD
             assert 'logger' in cfg[section][notifier], \
                 "No logger entry defined for " + notifier
-=======
->>>>>>> 623a1f6fd41b0b536a1d5328f0c6ec7260c98d3e
             logger = cfg[section][notifier]["logger"]
 
             for i in dir(imported_module):
                 attribute = getattr(imported_module, i)
 
                 # Search the file for an AlarmNotifier object.
-                if    inspect.isclass(attribute) \
+                if inspect.isclass(attribute) \
                   and issubclass(attribute, AlarmNotifier) \
                   and attribute != AlarmNotifier:
 
                     concrete_notifier = attribute(
                       name=notifier,
                       logger=logger)
-<<<<<<< HEAD
                     self.logger.info(
                       "adding %s %s to alarm notifiers list",
-                      imported_module.__name__ , str(attribute))
+                      imported_module.__name__, attribute)
 
-                    Alarm._get_notifiers().append(concrete_notifier)
-=======
-                    self.logger.info("adding " + imported_module.__name__ +  " "
-                      + str(attribute) + " to alarm notifiers list" )
                     Alarm.alarm_notifiers.append(concrete_notifier)
->>>>>>> 623a1f6fd41b0b536a1d5328f0c6ec7260c98d3e
 
                     # Populate module assign_parameters
                     PointManager().assign_parameters(
-                      d = cfg[section][notifier],
-                      target = concrete_notifier)
+                      data=cfg[section][notifier],
+                      target=concrete_notifier,
+                    )
 
         self.logger.info("Starting Supervisor")
 
@@ -124,7 +117,7 @@ class Supervisor(object):
         # The alarm handler is not an option.
         self.alarm_handler = AlarmHandler(
           name="alarm processer",
-          logger="supervisory"
+          logger="supervisory",
         )
 
         Alarm.alarm_handler = self.alarm_handler
@@ -145,48 +138,23 @@ class Supervisor(object):
                 if    inspect.isclass(attribute) \
                   and issubclass(attribute, SupervisedThread) \
                   and attribute != SupervisedThread:
-                    # Everything looks valid, import the instansiate the module.
+                    # Everything looks valid,
+                    # import the instansiate the module.
 
                     concrete_thread = attribute(
                       name=thread_name,
                       logger=cfg[section][thread_name]["logger"]
                     )
 
-                    self.logger.info("added %s %s", thread_name, str(attribute))
+                    self.logger.info("added %s %s", thread_name, attribute)
 
                     # Populate module points
-                    if 'points' in cfg[section][thread_name]:
-                        for point_name in cfg[section][thread_name]['points']:
-                            self.logger.info("assigning point %s", point_name)
-                            if 'access' in cfg[section][thread_name]['points'][point_name]:
-                                db_rw = cfg[section][thread_name]['points'][point_name]['access']
-                            else:
-                                db_rw = None
-
-                            assert 'name' in cfg[section][thread_name]['points'][point_name],\
-                              "Couldn't find database point name field for " + thread_name + ": " + point_name
-                            PointManager().assign_point(
-                              target=concrete_thread,
-                              object_point_name=point_name,
-                              database_point_name=cfg[section][thread_name]['points'][point_name]['name'],
-                              db_rw=db_rw
-                            )
-
-                    # populate module alarms
-                    if 'alarms' in cfg[section][thread_name]:
-                        for alarm_name in cfg[section][thread_name]['alarms']:
-                            self.logger.info("assigning point " + alarm_name)
-                            if 'access' in cfg[section][thread_name]['alarms'][alarm_name]:
-                                db_rw = cfg[section][thread_name]['alarms'][alarm_name]['access']
-                            else:
-                                db_rw = None
-
-                            PointManager().assign_point(
-                              target=concrete_thread,
-                              object_point_name=alarm_name,
-                              database_point_name=cfg[section][thread_name]['alarms'][alarm_name]['name'],
-                              db_rw=db_rw
-                            )
+                    PointManager().assign_points(
+                      data=cfg[section][thread_name],
+                      target=concrete_thread,
+                      target_name=thread_name,
+                      thread=concrete_thread,
+                    )
 
                     # Populate module assign_parameters
                     PointManager().assign_parameters(
@@ -213,8 +181,8 @@ class Supervisor(object):
         # Start the point database server
         rpc_object = RpcServer()
         rpc_object.active_alarm_list = self.alarm_handler.active_alarm_list
-        rpc_object.global_alarm_list = pyAutomation.DataObjects.Alarm.global_alarms
-        rpc_object.point_dict = PointManager().get_global_points()
+        rpc_object.global_alarm_list = PointManager().global_alarms()
+        rpc_object.point_dict = PointManager().global_points()
         rpc_object.thread_list = self.threads
         rpc_object.get_hmi_point = PointManager().get_hmi_point
 
@@ -259,7 +227,7 @@ args = parser.parse_args()
 
 
 # run the supervisor.
-s=Supervisor(
+supervisor = Supervisor(
   logic_yaml_files=args.logic,
   point_database_yaml_files=args.points,
 )
@@ -267,7 +235,7 @@ s=Supervisor(
 
 # catch TERM and INT signals to cleanly stop the system.
 def my_sigterm_handler(signal, fluff):
-    s.exit()
+    supervisor.exit()
 
 
 signal.signal(signal.SIGTERM, my_sigterm_handler)

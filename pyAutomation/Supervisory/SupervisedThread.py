@@ -70,7 +70,7 @@ class SupervisedThread(Interruptable, ABC):
         assert name is not None, \
           'Caller has no name defined.'
 
-        self.logger.debug("Interrupt on:" + self.name + " from : " + name)
+        self.logger.debug("Interrupt on: %s from %s", self.name, name)
         self.interrupt_request_deque.append(name)
 
         if self.condition.acquire(timeout=0):
@@ -88,7 +88,7 @@ class SupervisedThread(Interruptable, ABC):
 
     def thread_loop(self, loop, ):
         try:
-            self.logger.info("Starting thread_loop for: " + self.name)
+            self.logger.info("Starting thread_loop for: %s", self.name)
             self.condition.acquire()
 
             self.default_next_run_time = datetime.datetime.now()

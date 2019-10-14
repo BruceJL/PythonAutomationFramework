@@ -15,7 +15,8 @@ class PointAnalogWindow(AbstractWindow):
     def __init__(self, point_analog: PointAnalog) -> None:
         self.p = point_analog
         [height, width] = self.hmi_window_size()
-        self.screen = pyAutomation.Hmi.Common.get_modal_window([height, width], self)
+        self.screen = pyAutomation.Hmi.Common.get_modal_window(
+          [height, width], self)
         self.selection = str(self.p.editable_value)
 
     def hmi_window_size(self) -> [int, int]:
@@ -49,7 +50,8 @@ class PointAnalogWindow(AbstractWindow):
 
                 # Enter key pressed
                 elif x == curses.KEY_ENTER or x == 10 or x == 13:
-                    pyAutomation.Hmi.Common.write_to_point(self.p.name, str(self.selection))
+                    pyAutomation.Hmi.Common.write_to_point(
+                      self.p.name, str(self.selection))
                     prompt = False
 
             if x == curses.KEY_F11:

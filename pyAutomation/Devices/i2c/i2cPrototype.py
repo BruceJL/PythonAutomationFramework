@@ -15,8 +15,13 @@ class i2cPrototype(ABC):
         self.last_io_attempt = datetime.now()  # type: datetime.datetime
         self.is_setup = False
         self.name = name
+        self._logger = None
         self.logger = logging.getLogger(logger)
-        self.logger.debug("created device " + self.name + " using logger " + logger)
+        self.logger.debug(
+          "created device %s using logger %s",
+          self.name,
+          logger,
+        )
         self.delay_until = None
 
     @abstractmethod
@@ -42,6 +47,14 @@ class i2cPrototype(ABC):
         self._name = name
 
     name = property(_get_name, _set_name)
+
+    def _get_logger(self):
+        return self._logger
+
+    def _set_logger(self, logger) -> None:
+        self._logger = logger
+
+    logger = property(_get_logger, _set_logger)
 
     @property
     def interrupt_points(self) -> List[PointReadOnlyAbstract]:
@@ -75,17 +88,21 @@ class i2cPrototype(ABC):
                     point_next_update = p.next_update
 
                     if point_next_update is None:
-                        self.logger.debug(p.name + " has next update of NONE")
+                        # self.logger.debug("%s has next update of NONE", p.name)
                         continue
 
                     else:
-                        self.logger.debug(p.name + " has next update of: " + str(p.next_update))
+                        # self.logger.debug(
+                        #   "%s has next update of: %s",
+                        #   p.name,
+                        #   str(p.next_update),
+                        # )
                         if point_next_update < next_update:
                             next_update = point_next_update
 
         if datetime.max == next_update:
             next_update = None
 
-        self.logger.debug("for: " +  self.name + " is " + str(next_update))
+        # self.logger.debug("for: %s is %s", self.name, str(next_update))
 
         return next_update

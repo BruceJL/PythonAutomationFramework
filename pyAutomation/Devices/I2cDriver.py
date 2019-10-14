@@ -44,38 +44,24 @@ class I2cDriver(SupervisedThread):
                   and issubclass(attribute, i2cPrototype) \
                   and attribute != i2cPrototype:
 
-                    if "address" in config:
-                        address = config["address"]
-                    else:
-                        address = None
-
                     device_instance = attribute(
                       name=device,
                       logger=config[device]["logger"],
                       bus=int(self.bus)
                     )
 
-                    if 'points' in config[device]:
-                        for p in config[device]["points"]:
-                            if "name" in config[device]["points"][p]:
-                                if 'access' in config[device]["points"][p]:
-                                    db_rw = config[device]["points"][p]['access']
-                                else:
-                                    db_rw = None
+                    # Assign points to the module.
+                    PointManager().assign_points(
+                      data=config[device],
+                      target=device_instance,
+                      target_name=device,
+                      thread=self,
+                    )
 
-                                self.logger.info("assigning point: " + \
-                                  config[device]["points"][p]["name"] + \
-                                  " to " + p)
-                                PointManager.assign_point(
-                                  target=device_instance,
-                                  object_point_name=p,
-                                  database_point_name=config[device]["points"][p]["name"],
-                                  db_rw=db_rw)
-
-                    # Populate module parameter
+                    # Populate module parameters.
                     PointManager().assign_parameters(
                       target=device_instance,
-                      d=config[device])
+                      data=config[device])
 
                     device_instance.config()
                     self.devices.append(device_instance)
@@ -94,7 +80,7 @@ class I2cDriver(SupervisedThread):
         longest_wait_time = timedelta.min
 
         for device in self.devices:
-            if device.has_write_data:
+            if device.is_setup and device.has_write_data:
                 # data writes get pushed to the front of the queue by 1 second.
                 i = now - device.last_io_attempt + timedelta(seconds=1)
                 if i > longest_wait_time:
@@ -109,11 +95,11 @@ class I2cDriver(SupervisedThread):
                     device_to_run = self.current_read_device
 
         if device_to_run is not None:
-            self.logger.debug("doing I/O for " + device_to_run.name)
+            self.logger.debug("doing I/O for %s", device_to_run.name)
             try:
                 device_to_run.last_io_attempt = datetime.now()
                 if not device_to_run.is_setup:
-                     device_to_run.setup()
+                    device_to_run.setup()
                 if device_to_run.is_setup:
                     if device_to_run.has_write_data:
                         device_to_run.write_data()
@@ -121,14 +107,15 @@ class I2cDriver(SupervisedThread):
                         device_to_run.read_data()
                 else:
                     # the setup failed. Cool down for a few seconds
-                    t = datetime.now() + timedelta(seconds=20.0)
-                    print(device_to_run.name + " can't be setup. Delaying "
-                      + "until " + str(t))
+                    t = datetime.now() + timedelta(seconds=5.0)
+                    self.logger.error(
+                      " %s can't be setup. Delaying until %s",
+                      device_to_run.name, str(t))
                     device_to_run.delay_until = t
 
             except Exception as e:
                 self.logger.error(traceback.format_exc())
-                self.logger.error("Shutting down " + device_to_run.name)
+                self.logger.error("Shutting down %s", device_to_run.name)
                 self.devices.remove(device_to_run)
 
         # Figure out which device will be read next.

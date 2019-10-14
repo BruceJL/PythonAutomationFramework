@@ -10,60 +10,76 @@ import curses
 import logging
 import pyAutomation.Hmi.Common
 
-logger = logging.getLogger('gui')
-
 
 class ProcessValueWindow(AbstractWindow):
 
     def __init__(self, process_value: ProcessValue) -> None:
+        self.logger = logging.getLogger('hmi')
         self.p = process_value
         self.index = 0
         self._highlighted_item = 0
-        [height, self.description_width, self.data_width] = self.hmi_window_size()
+        [height, self.description_width, self.data_width] = \
+            self.hmi_window_size()
         width = self.description_width + self.data_width
-        self.screen = pyAutomation.Hmi.Common.get_modal_window([height, width], self)
-        self.item_count = 1 + len(self.p.control_points) + len(self.p.related_points) + len(self.p.alarms)
+        self.logger.debug("creating %s by %s modal window.", height, width)
+
+        self.screen = \
+            pyAutomation.Hmi.Common.get_modal_window([height, width], self)
+
+        self.item_count = \
+            1 + len(self.p.control_points) \
+            + len(self.p.related_points) + len(self.p.alarms)
 
     # Determine the size of the window.
-    def hmi_window_size(self) -> [int, int, int]:
+    def hmi_window_size(self) -> ['int', 'int', 'int']:
         # determine length of window
-        x1 = x2 = 0
+
+        desc_width = len("Value")
+        data_width = self.p.data_display_width
+
         for key in self.p.control_points:
             j = len(self.p.control_points[key].description)
-            if j > x1:
-                x1 = j
+            if j > desc_width:
+                desc_width = j
 
             j = self.p.control_points[key].data_display_width
-            if j > x2:
-                x2 = j
+            if j > data_width:
+                data_width = j
 
         for key in self.p.related_points:
             j = len(self.p.related_points[key].description)
-            if j > x1:
-                x1 = j
+            if j > desc_width:
+                desc_width = j
 
-            logger.debug("checking point: " + key)
+            self.logger.debug("checking point: %s", key)
             j = self.p.related_points[key].data_display_width
-            if j > x2:
-                x2 = j
+            if j > data_width:
+                data_width = j
 
         for key in self.p.alarms:
             j = len(self.p.alarms[key].description)
-            if x1 < j:
-                x1 = j
-            if 8 > x2:
-                x2 = 8
+            if desc_width < j:
+                desc_width = j
+            if 8 > data_width:
+                data_width = 8
 
-        x = x1 + x2
-        if x < len(self.p.description):
-            i = int(round(x - x1 - x2)/2)
-            x1 += i
-            x2 += i
+        x = desc_width + data_width
+        point_desc_width = len(self.p.description)
+        self.logger.debug(
+          "point description length %s", point_desc_width)
 
-        x1 += 3  # 1 window border line, 1 whitespace and 1 semicolon
-        x2 += 3  # 1 whitespace after semicolon, 1 after the value, and 1 for the border
+        if x < point_desc_width:
+            i = int(round(point_desc_width - x)/2)
+            desc_width += i
+            data_width += i
 
-        logger.debug("Description_width: " + str(x1) + " data_width: " + str(x2))
+        desc_width += 3  # 1 window border line, 1 whitespace and 1 colon
+
+        data_width += 3  # 1 whitespace after colon,
+                         # 1 after the value, and 1 for the border
+
+        self.logger.debug(
+          "Description_width: %s data width: %s", desc_width, data_width)
 
         # Determine height of window
         y = 6
@@ -80,7 +96,7 @@ class ProcessValueWindow(AbstractWindow):
         if j > 0:
             y += j + 1
         y += 1
-        return y, x1, x2
+        return y, desc_width, data_width
 
     # Get the user input
     def hmi_get_user_input(self):
@@ -107,7 +123,8 @@ class ProcessValueWindow(AbstractWindow):
                     if p.hmi_writeable:
                         pyAutomation.Hmi.Common.hmi_interact(p)
 
-                elif self._highlighted_item <= len(control_points_keys) + len(related_points_keys):
+                elif self._highlighted_item <= \
+                  len(control_points_keys) + len(related_points_keys):
                     p = self.p.related_points[
                         related_points_keys[self._highlighted_item - len(control_points_keys) - 1]]
                     if p.hmi_writeable:
@@ -158,6 +175,9 @@ class ProcessValueWindow(AbstractWindow):
         # Draw the point description
         i = round(x / 2 - len(self.p.description) / 2)
         j = 2
+
+        assert i > 0 and j > 0, \
+            "curses x print coordinates are negative"
 
         self.screen.addstr(j, i, self.p.description, curses.A_BOLD)
 

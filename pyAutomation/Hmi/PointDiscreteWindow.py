@@ -1,20 +1,15 @@
-"""
-Created on Apr 16, 2016
-
-@author: Bruce
-"""
-
 import curses
+import pyAutomation.Hmi.Common
 from pyAutomation.DataObjects.PointDiscrete import PointDiscrete
 from .AbstractWindow import AbstractWindow
-import pyAutomation.Hmi.Common
 
 
 class PointDiscreteWindow(AbstractWindow):
     def __init__(self, point_discrete: PointDiscrete) -> None:
         self.p = point_discrete
         [height, width] = self.hmi_window_size()
-        self.screen = pyAutomation.Hmi.Common.get_modal_window([height, width], self)
+        self.screen = pyAutomation.Hmi.Common.get_modal_window(
+          [height, width], self)
         self.selection = point_discrete.value
 
     def hmi_window_size(self) -> [int, int]:
@@ -37,12 +32,17 @@ class PointDiscreteWindow(AbstractWindow):
             x = self.screen.getch()
 
             if self.p.hmi_writeable:
-                if x == curses.KEY_LEFT or x == curses.KEY_RIGHT or x == curses.KEY_UP or x == curses.KEY_DOWN:
+                if x in (
+                  curses.KEY_LEFT,
+                  curses.KEY_RIGHT,
+                  curses.KEY_UP,
+                  curses.KEY_DOWN):
                     self.selection = not self.selection
                     pyAutomation.Hmi.Common.trigger_gui_update()
 
-                elif x == curses.KEY_ENTER or x == curses.KEY_SELECT or x == 10 or x == 13:
-                    pyAutomation.Hmi.Common.write_to_point(self.p.name, str(self.selection))
+                elif x in(curses.KEY_ENTER, curses.KEY_SELECT, 10, 13):
+                    pyAutomation.Hmi.Common.write_to_point(
+                      self.p.name, str(self.selection))
                     prompt = False
 
             elif x == curses.KEY_F11:

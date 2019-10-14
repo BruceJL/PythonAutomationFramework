@@ -122,7 +122,7 @@ class SI7020(i2cPrototype, PointHandler):
 
             self.is_setup = True
         except OSError as e:
-            self.logger.warn("Communications error " + str(e))
+            self.logger.error("setup I/O error %s", str(e))
 
         finally:
             if self.dev is not None:
@@ -171,13 +171,13 @@ class SI7020(i2cPrototype, PointHandler):
 
             self.alarm_comm_fail.input = False
 
-            self.logger.debug("temperature next read: " + str(self.point_temperature.next_update))
-            self.logger.debug("humidity next read: " + str(self.point_humidity.next_update))
-            self.logger.debug("run heater next read: " + str(self.point_run_heater  .next_update))
-            self.logger.debug("SI7020 successfully read. Next read at: " + str(self.next_update))
+            self.logger.debug("temperature next read: %s", str(self.point_temperature.next_update))
+            self.logger.debug("humidity next read: %s", str(self.point_humidity.next_update))
+            self.logger.debug("run heater next read: %s", str(self.point_run_heater  .next_update))
+            self.logger.debug("SI7020 successfully read. Next read at: %s ", str(self.next_update))
 
         except OSError as e:
-            self.logger.warn("Communication failure: " + str(e))
+            self.logger.error("read I/O error " + str(e))
             self.alarm_comm_fail.input = False
         finally:
             if self.alarm_comm_fail.active:
