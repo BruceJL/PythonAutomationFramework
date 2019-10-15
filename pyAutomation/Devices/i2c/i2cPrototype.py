@@ -81,28 +81,28 @@ class i2cPrototype(ABC):
             else:
                 return self.delay_until
 
+        next_point = "no point"
         next_update = datetime.max
         if self.device_points is not None:
             for p in self.device_points:
                 if p is not None:
-                    point_next_update = p.next_update
+                    next_update_time = p.next_update
 
-                    if point_next_update is None:
-                        # self.logger.debug("%s has next update of NONE", p.name)
+                    if next_update_time is None:
                         continue
-
                     else:
-                        # self.logger.debug(
-                        #   "%s has next update of: %s",
-                        #   p.name,
-                        #   str(p.next_update),
-                        # )
-                        if point_next_update < next_update:
-                            next_update = point_next_update
+                        if next_update_time < next_update:
+                            next_update = next_update_time
+                            next_point = p.name
 
         if datetime.max == next_update:
             next_update = None
 
-        # self.logger.debug("for: %s is %s", self.name, str(next_update))
+        self.logger.debug(
+          "next update for: %s is %s (%s)",
+          self.name,
+          next_update,
+          next_point,
+        )
 
         return next_update

@@ -61,7 +61,8 @@ class I2cDriver(SupervisedThread):
                     # Populate module parameters.
                     PointManager().assign_parameters(
                       target=device_instance,
-                      data=config[device])
+                      data=config[device],
+                    )
 
                     device_instance.config()
                     self.devices.append(device_instance)
@@ -80,8 +81,14 @@ class I2cDriver(SupervisedThread):
         longest_wait_time = timedelta.min
 
         for device in self.devices:
-            if device.is_setup and device.has_write_data:
+            if device.has_write_data:
+                self.logger.debug(
+                  "device: %s has pending writes.",
+                  device.name,
+                )
                 # data writes get pushed to the front of the queue by 1 second.
+                # this prevents a device that cannot write from monopolizing
+                # the queue, but it will drive this routine to 100% CPU.
                 i = now - device.last_io_attempt + timedelta(seconds=1)
                 if i > longest_wait_time:
                     longest_wait_time = i
@@ -95,7 +102,7 @@ class I2cDriver(SupervisedThread):
                     device_to_run = self.current_read_device
 
         if device_to_run is not None:
-            self.logger.debug("doing I/O for %s", device_to_run.name)
+            self.logger.debug("doing I/O for: %s", device_to_run.name)
             try:
                 device_to_run.last_io_attempt = datetime.now()
                 if not device_to_run.is_setup:
@@ -142,8 +149,11 @@ class I2cDriver(SupervisedThread):
 
         if device_next_read is not None:
             self.current_read_device = device_next_read
-        self.logger.debug(self.current_read_device.name + " will be read at "
-          + str(next_read_time))
+        self.logger.debug(
+          "%s will be read at %s",
+          self.current_read_device.name,
+          next_read_time
+        )
 
         if next_read_time != datetime.max:
             sleep_time = next_read_time - datetime.now()
@@ -154,11 +164,15 @@ class I2cDriver(SupervisedThread):
         # before we go to sleep.
         for device in self.devices:
             if device.has_write_data:
+                self.logger.debug(
+                  "Write pending for device: %s - not sleeping.",
+                  device.name,
+                )
                 return 0
 
         if sleep_time > self.min_sleep_time:
-            self.logger.debug("Sleeping " + str(sleep_time.total_seconds()))
+            self.logger.debug("Sleeping %s", sleep_time.total_seconds())
             return sleep_time.total_seconds()
         else:
-            self.logger.debug("Not Sleeping")
+            self.logger.debug("Sleep time less than minimum - not Sleeping.")
             return 0

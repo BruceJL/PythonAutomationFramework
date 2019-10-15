@@ -107,15 +107,19 @@ class SupervisedThread(Interruptable, ABC):
                 start_time = time.monotonic()
                 self.last_run_time = datetime.datetime.now()
                 # run the logic
-                self.logger.debug("Running thread: " + self._name)
+                self.logger.debug("Running thread: %s", self._name)
                 self.sleep_time = self.loop()
-                self.logger.debug("Done thread: " + self._name)
+                self.logger.debug("Done thread: %s", self._name)
                 self.sweep_time = time.monotonic() - start_time
 
                 # setup for sleep.
 
                 if self.sleep_time is None and self.period is not None:
                     # wait the sleep time as defined by the supervisor
+                    self.logger.debug(
+                      "%s returned a null sleep time, using default sleep" \
+                      + "time of %s", self.name, self.period
+                    )
                     self.sleep_time = (
                       self.default_next_run_time
                       - datetime.datetime.now()).total_seconds()
@@ -124,22 +128,33 @@ class SupervisedThread(Interruptable, ABC):
                 # interrupt whilst it was running. If so, restart the routine.
                 if 0 < len(self.interrupt_request_deque):
                     self.sleep_time = 0.0
-                    self.logger.debug(self.name + " *NOT* sleeping! pending interrupts")
+                    self.logger.debug(
+                      "%s *NOT* sleeping! pending interrupts",
+                      self.name)
                     continue
 
                 # sleep until we receive an interrupt.
                 elif self.sleep_time is None:
-                    self.logger.debug(self.name + " sleeping until interrupt")
+                    self.logger.debug(
+                      "%s sleeping until interrupt", self.name)
                     self.condition.wait(None)
 
                 # Got a valid sleep time?
                 elif 0.0 < self.sleep_time:
-                    self.logger.debug(self.name + " sleeping " + str(self.sleep_time))
+                    self.logger.debug(
+                      "%s sleeping %s",
+                      self.name,
+                      self.sleep_time,
+                    )
                     self.condition.wait(self.sleep_time)
 
                 else:
+                    self.logger.debug(
+                      "%s *NOT* sleeping! Got a sleep time of %s.",
+                      self.name,
+                      self.sleep_time
+                    )
                     self.sleep_time = 0.0
-                    self.logger.debug(self.name + " *NOT* sleeping! Got negative sleep time.")
 
         except Exception:
             self.logger.error(traceback.format_exc())
@@ -147,7 +162,7 @@ class SupervisedThread(Interruptable, ABC):
 
         finally:
             self.condition.release()
-            self.logger.info("Stopping Logic: " + self.name)
+            self.logger.info("Stopping Logic: %s", self.name)
             self.terminated = True
 
     # values for live object data for transport over JSON to the HMI.
