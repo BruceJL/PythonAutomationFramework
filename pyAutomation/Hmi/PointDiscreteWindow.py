@@ -31,7 +31,7 @@ class PointDiscreteWindow(AbstractWindow):
         while prompt:
             x = self.screen.getch()
 
-            if self.p.hmi_writeable:
+            if self.p.hmi_writeable or self.p.forced:
                 if x in (
                   curses.KEY_LEFT,
                   curses.KEY_RIGHT,
@@ -75,7 +75,7 @@ class PointDiscreteWindow(AbstractWindow):
         j = 2
         self.screen.addstr(j, i, self.p.description, color)
 
-        if not self.p.hmi_writeable:
+        if not self.p.hmi_writeable and not self.p.forced:
             color = curses.color_pair(0)
         elif self.selection:
             color = curses.color_pair(1)
@@ -86,7 +86,7 @@ class PointDiscreteWindow(AbstractWindow):
         j = 5
         self.screen.addstr(j, i, self.p.off_state_description, color)
 
-        if not self.p.hmi_writeable:
+        if not self.p.hmi_writeable and not self.p.forced:
             color = curses.color_pair(0)
         elif not self.selection:
             color = curses.color_pair(1)

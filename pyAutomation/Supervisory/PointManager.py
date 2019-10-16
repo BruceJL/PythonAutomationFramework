@@ -201,7 +201,7 @@ class PointManager:
 
     @staticmethod
     def get_hmi_point(s: 'str') -> 'PointReadOnlyAbstract':
-        return get_point_ro(s)
+        return find_point(s)
 
 
 def find_point(name: 'str') -> 'PointAbstract':

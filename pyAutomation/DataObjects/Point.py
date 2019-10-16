@@ -238,6 +238,10 @@ class Point(PointAbstract, ABC):
         elif self._forced != value:
             self._forced = value
             self._last_update = datetime.now()
+        if self._forced == False:
+            # Fire the writer to reset the point to its correct value.
+            if self.writer is not None:
+                self.writer.interrupt(self.name + " unforced")
 
     forced = property(_get_forced, _set_forced)
 

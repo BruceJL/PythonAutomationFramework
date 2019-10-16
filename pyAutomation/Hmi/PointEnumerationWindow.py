@@ -37,7 +37,7 @@ class PointEnumerationWindow(AbstractWindow):
         while prompt:
             # get user input
             x = self.screen.getch()
-            if self.p.hmi_writeable:
+            if self.p.hmi_writeable or self.p.forced:
                 if x == curses.KEY_DOWN:
                     self.selection += 1
                     if len(self.p.states) == self.selection:
@@ -73,7 +73,7 @@ class PointEnumerationWindow(AbstractWindow):
         self.screen.addstr(j, i, self.p.description, curses.A_BOLD)
         j += 2
         for s in self.p.states:
-            if self.p.states[self.selection] == s and self.p.hmi_writeable:
+            if self.p.states[self.selection] == s and self.p.hmi_writeable or self.p.forced:
                 color = curses.color_pair(2)
             else:
                 color = curses.color_pair(1)
