@@ -10,6 +10,8 @@ from pyAutomation.Supervisory.Interruptable import Interruptable
 
 
 class SupervisedThread(Interruptable, ABC):
+    """ Class that is extended to make threads which are executed periodically
+    or when point changes trigger those updates."""
 
     def __init__(self, name: str, loop, period, logger: str) -> None:
         self._name = name
@@ -28,6 +30,7 @@ class SupervisedThread(Interruptable, ABC):
         self.type = "Control"
 
     def start(self):
+        """Starts the thread wrapped by this object."""
         self.thread.start()
 
     def _get_name(self):
@@ -44,25 +47,35 @@ class SupervisedThread(Interruptable, ABC):
     logger = property(_get_logger)
 
     @staticmethod
-    def get_lowest_sleep_time(f1: float, f2: float) -> float:
-        if f1 is None and f2 is None:
+    def get_lowest_sleep_time(float_1: float, float_2: float) -> float:
+        """ Get the lowest sleep time and deal with situations where either or
+        both of the sleep times are None."""
+        if float_1 is None and float_2 is None:
             return None
-        elif f1 is None:
-            return f2
-        elif f2 is None:
-            return f1
-        elif f1 < f2:
-            return f1
-        else:
-            return f2
+        if float_1 is None:
+            return float_2
+        if float_2 is None:
+            return float_1
+        if float_1 < float_2:
+            return float_1
+
+        return float_2
 
     def quit(self):
+        """Cause the thread to terminate"""
         self._quit = True
-        self.interrupt("Quitting!")
+        self.interrupt(
+          name="Quitting!",
+          reason=self,
+        )
 
-    def interrupt(self, name: 'str'):
-        # This method will be called by the program logic so it must block
-        # as little as possible.
+    # Interruptable override.
+    def interrupt(self, name: 'str', reason: 'Any'):
+        """ This method will cause the thread to abitrarly wake up and execute
+        This is used when points are written to by processes and the new data
+        needs to be propagated to all threads that consume that point. As this
+        method will be called by the program logic that updated the point, it
+        must block as little as possible. """
 
         assert self.name is not None, \
           'Thread has no name defined.'
@@ -71,7 +84,7 @@ class SupervisedThread(Interruptable, ABC):
           'Caller has no name defined.'
 
         self.logger.debug("Interrupt on: %s from %s", self.name, name)
-        self.interrupt_request_deque.append(name)
+        self.interrupt_request_deque.append(reason)
 
         if self.condition.acquire(timeout=0):
             # Got the lock immediately. Notify the thread.
@@ -79,14 +92,20 @@ class SupervisedThread(Interruptable, ABC):
             self.condition.release()
 
     @abstractmethod
-    def config(self, data: 'dict') -> None:
-        pass
+    def config(self, data: 'Dict') -> None:
+        """ setup the Supervised thread based upon the configuration data
+        supplied in the config section of the yaml file for this module.
+        Config data is free form allowing for more complex structures than
+        the parameters section."""
 
     @abstractmethod
     def loop(self) -> 'float':
-        pass
+        """ function where the designer inserts logic for this module"""
 
     def thread_loop(self, loop, ):
+        """ function that wraps the designer built loop and ensures that it is
+        executed at the appropriate times. """
+
         try:
             self.logger.info("Starting thread_loop for: %s", self.name)
             self.condition.acquire()
@@ -96,7 +115,7 @@ class SupervisedThread(Interruptable, ABC):
             while not self._quit:
 
                 # clear out any interrupt requests
-                if 0 < len(self.interrupt_request_deque):
+                if len(self.interrupt_request_deque) > 0:
                     self.interrupt_request_deque.clear()
 
                 # increment the next_run_time
@@ -117,8 +136,8 @@ class SupervisedThread(Interruptable, ABC):
                 if self.sleep_time is None and self.period is not None:
                     # wait the sleep time as defined by the supervisor
                     self.logger.debug(
-                      "%s returned a null sleep time, using default sleep" \
-                      + "time of %s", self.name, self.period
+                      ("%s returned a null sleep time, using default sleep"
+                       + "time of %s"), self.name, self.period
                     )
                     self.sleep_time = (
                       self.default_next_run_time
@@ -126,7 +145,7 @@ class SupervisedThread(Interruptable, ABC):
 
                 # Check and see if there are interrupts queued (i.e. the routine got an
                 # interrupt whilst it was running. If so, restart the routine.
-                if 0 < len(self.interrupt_request_deque):
+                if len(self.interrupt_request_deque) > 0:
                     self.sleep_time = 0.0
                     self.logger.debug(
                       "%s *NOT* sleeping! pending interrupts",
@@ -134,13 +153,13 @@ class SupervisedThread(Interruptable, ABC):
                     continue
 
                 # sleep until we receive an interrupt.
-                elif self.sleep_time is None:
+                if self.sleep_time is None:
                     self.logger.debug(
                       "%s sleeping until interrupt", self.name)
                     self.condition.wait(None)
 
                 # Got a valid sleep time?
-                elif 0.0 < self.sleep_time:
+                elif self.sleep_time > 0.0:
                     self.logger.debug(
                       "%s sleeping %s",
                       self.name,

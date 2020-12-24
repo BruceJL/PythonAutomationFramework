@@ -67,7 +67,10 @@ class AlarmHandler(SupervisedThread):
             self.active_alarm_timer_list.append(a)
 
         # queue a run of the loop.
-        self.interrupt(name=self.name + ": add alarm timer.")
+        self.interrupt(
+          name=self.name + ": add alarm timer.",
+          reason=self,
+        )
 
     def remove_alarm_timer(self, a: 'Alarm') -> None:
         # This method will be called by the program logic so it must block
@@ -76,7 +79,10 @@ class AlarmHandler(SupervisedThread):
             self.active_alarm_timer_remove_list.append(a)
 
         # queue a run of the loop.
-        self.interrupt(name=self.name + ": remove alarm timer.")
+        self.interrupt(
+          name=self.name + ": remove alarm timer.",
+          reason=self,
+        )
 
     def count_alarm_timer_list(self) -> int:
         with self.alarm_timer_list_add_condition:

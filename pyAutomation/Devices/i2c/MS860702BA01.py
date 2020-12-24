@@ -3,7 +3,6 @@
 # http://www.phanderson.com/arduino/I2CCommunications.pdf
 
 import datetime
-import logging
 from pyAutomation.Devices.i2c.i2cPrototype import i2cPrototype
 from pyAutomation.Supervisory.PointHandler import PointHandler
 
@@ -14,8 +13,8 @@ class MS860702BA01(i2cPrototype, PointHandler):
     ADDRESS = 0x27
 
     _points_list = {
-      'point_humidity':    {'type': 'PointAnalog',   'access': 'rw'},
-      'point_temperature': {'type': 'PointAnalog',   'access': 'rw'},
+      'point_humidity': {'type': 'PointAnalog', 'access': 'rw'},
+      'point_temperature': {'type': 'PointAnalog', 'access': 'rw'},
     }
 
     parameters = {}
@@ -53,11 +52,19 @@ class MS860702BA01(i2cPrototype, PointHandler):
             if self.status == 0x00:
                 self.point_humidity.setQuality(True)
                 self.point_temperature.setQuality(True)
-                self.point_temperature.setValue(((TEMPERATURE_MSB & 0x3f) << 8 | TEMPERATURE_LSB)/0x3fff * 100)
-                self.point_humidity.setValue((HUMIDITY_MSB << 6 | HUMIDITY_LSB >> 2) / 0x3fff * 165 - 40)
+                self.point_temperature.setValue(
+                  ((TEMPERATURE_MSB & 0x3f) << 8
+                  | TEMPERATURE_LSB) / 0x3fff * 100
+                )
+
+                self.point_humidity.setValue(
+                  (HUMIDITY_MSB << 6 | HUMIDITY_LSB >> 2) / 0x3fff * 165 - 40
+                )
+
             else:
                 self.point_humidity.setQuality(False)
                 self.point_temperature.setQuality(False)
+
         except Exception as e:
             self.point_humidity.ioSetQuality(False)
             self.point_temperature.ioSetQuality(False)

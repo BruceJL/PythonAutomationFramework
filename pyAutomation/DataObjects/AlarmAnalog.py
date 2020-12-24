@@ -1,7 +1,6 @@
 import logging
-from .Alarm import Alarm
 from typing import Dict, Any
-import ruamel
+from .Alarm import Alarm
 
 logger = logging.getLogger('controller')
 
@@ -80,9 +79,8 @@ class AlarmAnalog(Alarm):
     def _get_yaml_dict(self) -> 'Dict[str, Any]':
         """
         Gets a representation of this alarm suitable for storage in a yaml file.
-        YAML files are used for storing the alarm when stopping and starting then
-        process supervisor.
-
+        YAML files are used for storing the alarm when stopping and starting
+        the process supervisor.
         """
         d = super()._get_yaml_dict()
         d.update(dict(

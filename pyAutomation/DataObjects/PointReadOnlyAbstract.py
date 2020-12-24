@@ -1,11 +1,14 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Callable, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pyAutomation.DataObjects.PointAbstract import PointAbstract
 
 class PointReadOnlyAbstract(ABC):
+    '''PointReadOnlyAbstract is the base type that all points - abstract or 
+    concrete are derived from. The functions contained in this class will be
+    present for every point in the database. '''
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
@@ -74,6 +77,11 @@ class PointReadOnlyAbstract(ABC):
         pass
 
     writer = property(_get_writer)
+
+    def _get_readonly(self) -> 'bool':
+        return True
+
+    readonly = property(_get_readonly)
 
     # observers
     @abstractmethod

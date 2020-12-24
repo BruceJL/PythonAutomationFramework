@@ -6,17 +6,10 @@ Created on Apr 14, 2016
 @author: Bruce
 '''
 
-
 import traceback
-import logging
-from typing import TYPE_CHECKING
-from pyAutomation.DataObjects.Alarm import Alarm
 from pyAutomation.Devices.i2c.i2cPrototype import i2cPrototype
 from pyAutomation.Supervisory.PointHandler import PointHandler
 from .linuxi2c3 import IIC
-
-if TYPE_CHECKING:
-    from pyAutomation.DataObjects.PointAnalogScaled import PointAnalogScaled
 
 REG_CONVERSION = 0x00
 REG_CONFIG = 0x01
@@ -70,28 +63,25 @@ REG_CONFIG = 0x01
 # 0 : Active low (default)
 # 1 : Active high
 
-# Bit 2 COMP_LAT Latching Comparator
-# This bit controls whether the ALERT/RDY pin latches once asserted or clears once
-# conversions are within the margin of the upper and lower threshold values. When
-# COMP_LAT = '0', the ALERT/RDY pin does not latch when asserted. When
-# COMP_LAT = '1', the asserted ALERT/RDY pin remains latched until conversion data
-# are read by the master or an appropriate SMBus alert response is sent by the
-# master, the device responds with its address, and it is the lowest address
-# currently asserting the ALERT/RDY bus line. This bit serves no function on the
-# ADS1013
-# 0 : Non-latching comparator (default)
-# 1 : Latching comparator
-#
-# Bit 1-0 COMP_QUE: Comparator queue and disable
-# These bits perform two functions. When set to '11', they disable the comparator
-# function and put the ALERT/RDY pin into a high state. When set to any other
-# value, they control the number of successive conversions exceeding the upper or
-# lower thresholds required before asserting the ALERT/RDY pin. They serve no
-# function on the ADS1013.
-# 00 : Assert after one conversion
-# 01 : Assert after two conversions
-# 10 : Assert after four conversions
-# 11 : Disable comparator (default)
+# Bit 2 COMP_LAT
+# Latching Comparator This bit controls whether the ALERT/RDY pin latches once
+# asserted or clears once conversions are within the margin of the upper and
+# lower threshold values. When COMP_LAT = '0', the ALERT/RDY pin does not latch
+# when asserted. When COMP_LAT = '1', the asserted ALERT/RDY pin remains latched
+# until conversion data are read by the master or an appropriate SMBus alert
+# response is sent by the master, the device responds with its address, and it
+# is the lowest address currently asserting the ALERT/RDY bus line. This bit
+# serves no function on the ADS1013 0 : Non-latching comparator (default) 1 :
+# Latching comparator
+
+# Bit 1-0 COMP_QUE:
+# Comparator queue and disable These bits perform two functions. When set to
+# '11', they disable the comparator function and put the ALERT/RDY pin into a
+# high state. When set to any other value, they control the number of successive
+# conversions exceeding the upper or lower thresholds required before asserting
+# the ALERT/RDY pin. They serve no function on the ADS1013. 00 : Assert after
+# one conversion 01 : Assert after two conversions 10 : Assert after four
+# conversions 11 : Disable comparator (default)
 #
 
 REG_READ_PORT0_SETUP = [0xC1, 0xE3]  # 1 100 -  001 1 -  000 0 - 0 0 11
@@ -120,7 +110,7 @@ class ADS1015IDGSR(i2cPrototype, PointHandler):
       'port_2': {'type': 'PointAnalog', 'access': 'rw'},
       'port_3': {'type': 'PointAnalog', 'access': 'rw'},
 
-      'alarm_comm_fail':  {'type': 'Alarm', 'access': 'rw'},
+      'alarm_comm_fail': {'type': 'Alarm', 'access': 'rw'},
     }
 
     parameters = [
@@ -192,7 +182,11 @@ class ADS1015IDGSR(i2cPrototype, PointHandler):
                     bits = dev.i2c([REG_CONVERSION], 2, 0.01)
                     point = (bits[0] << 8) + bits[1]
                     point /= 16
-                    self.logger.debug("Read : " + _get_byte_string(bits) + " which is: " + str(point))
+                    self.logger.debug(
+                      "Read : " + _get_byte_string(bits) + " which is: "
+                      + str(point)
+                    )
+
                     return point
                 else:
                     return None
@@ -201,7 +195,9 @@ class ADS1015IDGSR(i2cPrototype, PointHandler):
                 self.logger.debug("State 0 Entered")
                 if self.port_0 is not None:
                     b = [REG_CONFIG] + REG_READ_PORT0_SETUP
-                    self.logger.debug("sending " + _get_byte_string(b) + " to read port 0")
+                    self.logger.debug(
+                      "sending " + _get_byte_string(b) + " to read port 0"
+                    )
                     dev.i2c(b, 0, 0.01)
                     self.state = 1
                 else:
@@ -223,7 +219,9 @@ class ADS1015IDGSR(i2cPrototype, PointHandler):
                 if self.port_1 is not None:
                     # Start a measurement for channel 1
                     b = [REG_CONFIG] + REG_READ_PORT1_SETUP
-                    self.logger.debug("send " + _get_byte_string(b) + " to read port 1")
+                    self.logger.debug(
+                      "send " + _get_byte_string(b) + " to read port 1"
+                    )
                     dev.i2c(b, 0, 0.01)
                     self.state = 3
                 else:
@@ -245,7 +243,9 @@ class ADS1015IDGSR(i2cPrototype, PointHandler):
                 if self.port_2 is not None:
                     # Start a measurement for channel 2
                     b = [REG_CONFIG] + REG_READ_PORT2_SETUP
-                    self.logger.debug("send " + _get_byte_string(b) + " to read port 2")
+                    self.logger.debug(
+                      "send " + _get_byte_string(b) + " to read port 2"
+                    )
                     dev.i2c(b, 0, 0.01)
                     self._state = 5
                 else:
@@ -267,7 +267,9 @@ class ADS1015IDGSR(i2cPrototype, PointHandler):
                 if self.port_3 is not None:
                     # Start a measurement for channel 3
                     b = [REG_CONFIG] + REG_READ_PORT3_SETUP
-                    self.logger.debug("send " + _get_byte_string(b) + " to read port 3")
+                    self.logger.debug(
+                      "send " + _get_byte_string(b) + " to read port 3"
+                    )
                     dev.i2c(b, 0, 0.01)
                     self.state = 7
                 else:
@@ -282,8 +284,9 @@ class ADS1015IDGSR(i2cPrototype, PointHandler):
 
             self.alarm_comm_fail.input = False
             self.logger.debug(
-                "ADS1015 successfully read. Next read at: "
-                + str(self.next_update))
+              "ADS1015 successfully read. Next read at: "
+              + str(self.next_update)
+            )
 
         except OSError as e:
             self.logger.error("I/O fault " + str(e))
@@ -301,9 +304,11 @@ class ADS1015IDGSR(i2cPrototype, PointHandler):
                 # self.point_3.quality = False
                 self.state = 0
 
-            self.logger.debug("Read successful. Next read at " + str(self.next_update))
+            self.logger.debug(
+              "Read successful. Next read at " + str(self.next_update)
+            )
 
-        except Exception as e:
+        except Exception:
             self.logger.error(traceback.format_exc())
 
         finally:

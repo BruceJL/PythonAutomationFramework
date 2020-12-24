@@ -25,7 +25,7 @@ setuptools.setup(
       'pyAutomation.Devices',
       'pyAutomation.Hmi',
       'pyAutomation.Supervisory',
-      'pyAutomation.test',
+      'pyAutomation.tests',
     ],
     scripts=[
       'bin/Supervisor.py',

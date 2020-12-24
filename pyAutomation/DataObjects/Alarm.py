@@ -1,9 +1,7 @@
 import datetime
 import dateutil.parser
 import logging
-import smtplib
 import time
-import traceback
 from typing import TYPE_CHECKING, Dict, List, Callable, Any
 
 if TYPE_CHECKING:
@@ -118,10 +116,10 @@ class Alarm(object):
         """
         self._name = n
 
-    def _get_name(self):
+    def _get_name(self) -> 'str':
         """ Returns the name of the object with some error checking. """
         assert self._name is not None, \
-          "No name has been assigned"
+            "No name has been assigned"
         return self._name
 
     def _set_name(self, name):

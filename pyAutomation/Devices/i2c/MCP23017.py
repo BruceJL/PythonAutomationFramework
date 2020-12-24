@@ -41,10 +41,10 @@ REG_B_OUTPUT_LATCH = 0x15  # OLATB
 
 
 # helper function
-def _append_if_point_ro(p, list):
+def _append_if_point_ro(p, point_list):
     if p is not None:
-        if "PointReadOnly" == type(p):
-            list.append(p)
+        if  type(p) == "PointReadOnly":
+            point_list.append(p)
 
 
 class MCP23017(i2cPrototype, PointHandler):
@@ -110,25 +110,25 @@ class MCP23017(i2cPrototype, PointHandler):
 
     @property
     def interrupt_points(self):
-        list = []
-        _append_if_point_ro(self.port_A0, list)
-        _append_if_point_ro(self.port_A1, list)
-        _append_if_point_ro(self.port_A2, list)
-        _append_if_point_ro(self.port_A3, list)
-        _append_if_point_ro(self.port_A4, list)
-        _append_if_point_ro(self.port_A5, list)
-        _append_if_point_ro(self.port_A6, list)
-        _append_if_point_ro(self.port_A7, list)
+        point_list = []
+        _append_if_point_ro(self.port_A0, point_list)
+        _append_if_point_ro(self.port_A1, point_list)
+        _append_if_point_ro(self.port_A2, point_list)
+        _append_if_point_ro(self.port_A3, point_list)
+        _append_if_point_ro(self.port_A4, point_list)
+        _append_if_point_ro(self.port_A5, point_list)
+        _append_if_point_ro(self.port_A6, point_list)
+        _append_if_point_ro(self.port_A7, point_list)
 
-        _append_if_point_ro(self.port_B0, list)
-        _append_if_point_ro(self.port_B1, list)
-        _append_if_point_ro(self.port_B2, list)
-        _append_if_point_ro(self.port_B3, list)
-        _append_if_point_ro(self.port_B4, list)
-        _append_if_point_ro(self.port_B5, list)
-        _append_if_point_ro(self.port_B6, list)
-        _append_if_point_ro(self.port_B7, list)
-        return list
+        _append_if_point_ro(self.port_B0, point_list)
+        _append_if_point_ro(self.port_B1, point_list)
+        _append_if_point_ro(self.port_B2, point_list)
+        _append_if_point_ro(self.port_B3, point_list)
+        _append_if_point_ro(self.port_B4, point_list)
+        _append_if_point_ro(self.port_B5, point_list)
+        _append_if_point_ro(self.port_B6, point_list)
+        _append_if_point_ro(self.port_B7, point_list)
+        return point_list
 
     def setup(self):
         self.logger.debug("Entering Function")
@@ -239,7 +239,7 @@ class MCP23017(i2cPrototype, PointHandler):
 
         finally:
             def _set_bad_quality(point):
-                if point is not None and type(point) is PointDiscrete:
+                if point is not None and isinstance(point, PointDiscrete):
                     point.quality = False
 
             _set_bad_quality(self.port_A0)
@@ -324,10 +324,10 @@ class MCP23017(i2cPrototype, PointHandler):
                 self.logger.error("data write was unsuccessful")
 
                 if masked_port_a_expected != masked_port_a_actual:
-                    self.logger.error("port A is: %s should be %s",
-                    hex(masked_port_a_actual),
-                    hex(masked_port_a_expected)
-                )
+                    self.logger.error("port A is: {} should be {}".format(
+                      hex(masked_port_a_actual),
+                      hex(masked_port_a_expected)
+                    ))
 
                 if masked_port_b_expected != masked_port_b_actual:
                     self.logger.error(
@@ -379,24 +379,23 @@ class MCP23017(i2cPrototype, PointHandler):
         return config_byte
 
     def config(self):
-
         self.device_points = [
-            self.port_A0,
-            self.port_A1,
-            self.port_A2,
-            self.port_A3,
-            self.port_A4,
-            self.port_A5,
-            self.port_A6,
-            self.port_A7,
-            self.port_B0,
-            self.port_B1,
-            self.port_B2,
-            self.port_B3,
-            self.port_B4,
-            self.port_B5,
-            self.port_B6,
-            self.port_B7]
+          self.port_A0,
+          self.port_A1,
+          self.port_A2,
+          self.port_A3,
+          self.port_A4,
+          self.port_A5,
+          self.port_A6,
+          self.port_A7,
+          self.port_B0,
+          self.port_B1,
+          self.port_B2,
+          self.port_B3,
+          self.port_B4,
+          self.port_B5,
+          self.port_B6,
+          self.port_B7]
 
         self.port_a_cfg = self._setup_port(self.port_A0, self.port_a_cfg, 0)
         self.port_a_cfg = self._setup_port(self.port_A1, self.port_a_cfg, 1)

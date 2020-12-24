@@ -36,6 +36,8 @@ loggers:
 #       mailhost: mail.fake.com
 #       mailport: 587
 
+
+
 SupervisedThreads:
   pump_controller_1:
     logger: controller
@@ -142,3 +144,62 @@ SupervisedThreads:
         name: point_tank_2_pump_2_drain_rate
         access: rw
         type: PointAnalog
+
+    modbus_client:
+      logger: devices
+      package: pyAutomation
+      module: .Devices.Modbus.Client
+      parameters:
+        address: localhost
+        port: 502
+      points:
+        modbus_integer_value:
+          command: INPUT # Command 04
+          drop: 01
+          address: 1234
+          datatype: int16-big-endian
+          name: client_received_modbus_integer
+          type: PointAnalog
+          access: rw
+        modbus_boolean_value:
+          command: COIL # Command 01
+          drop: 01
+          address: 4321
+          name: client_recieved_modbus_boolean
+          access: ro
+        modbus_boolean_in_int_value:
+          command: HOLDING # Command 03
+          drop: 01
+          address: 1235.2
+          name: client_recieved_modbus_boolean_in_int
+          datatype: bit-in-word
+          access: rw
+
+      modbus_server:
+        logger: devices
+        package: pyAutomation
+        modbule: .Devices.Modbus.Client
+        port: 502
+        points:
+          modbus_integer_value:
+            command: INPUT # Command 04
+            drop: 01
+            address: 1234
+            datatype: int16-big-endian
+            name: client_received_modbus_integer
+            type: PointAnalog
+            access: ro
+          modbus_boolean_value:
+            command: COIL # Command 01
+            drop: 01
+            address: 4321
+            name: client_recieved_modbus_boolean
+            access: rw
+          modbus_boolean_in_int_value:
+            command: HOLDING # Command 03
+            drop: 01
+            address: 1235.2
+            name: client_recieved_modbus_boolean_in_int
+            datatype: bit-in-word
+            access: ro
+        

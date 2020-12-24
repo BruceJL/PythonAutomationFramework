@@ -1,9 +1,3 @@
-'''
-Created on Apr 11, 2016
-
-@author: Bruce
-'''
-
 from typing import TYPE_CHECKING, List
 from pyAutomation.Devices.i2c.i2cPrototype import i2cPrototype
 from pyAutomation.Supervisory.PointHandler import PointHandler
@@ -12,7 +6,6 @@ from .linuxi2c3 import IIC
 if TYPE_CHECKING:
     from pyAutomation.DataObjects.PointAnalog import PointAnalog
     from pyAutomation.DataObjects.PointAbstract import PointAbstract
-    from pyAutomation.DataObjects.PointAnalogAbstract import PointAnalogAbstract
     from pyAutomation.DataObjects.PointDiscrete import PointDiscrete
 
 # https://www.silabs.com/documents/public/data-sheets/Si7020-A20.pdf
@@ -40,9 +33,9 @@ class SI7020(i2cPrototype, PointHandler):
     logger = None
 
     _points_list = {
-      'point_humidity':    {'type': 'PointAnalog',   'access': 'rw'},
+      'point_humidity': {'type': 'PointAnalog',   'access': 'rw'},
       'point_temperature': {'type': 'PointAnalog',   'access': 'rw'},
-      'point_run_heater':  {'type': 'PointDiscrete', 'access': 'rw'},
+      'point_run_heater': {'type': 'PointDiscrete', 'access': 'rw'},
 
       'alarm_comm_fail': {'type': "Alarm", 'access': 'rw'},
       'alarm_vdd_low': {'type': "Alarm", 'access': 'rw'},
@@ -52,7 +45,7 @@ class SI7020(i2cPrototype, PointHandler):
 
     def __init__(self, name: str, bus: int, logger: str) -> None:
         self.bus = bus  # type: int
-        self.point_temperature = None  # type: PointAnalogAbstract
+        self.point_temperature = None  # type: PointAnalog
         self.point_humidity = None     # type: PointAnalog
         self.point_run_heater = None   # type: PointDiscrete
         self.is_setup = False          # type: bool
@@ -100,18 +93,26 @@ class SI7020(i2cPrototype, PointHandler):
 
             # Verify heater current draw value
             data = [CMD_READ_HEATER_CTRL]
-            self.logger.debug(format_debug_data("Reading heater control byte: ", data))
+            self.logger.debug(
+              format_debug_data("Reading heater control byte: ", data)
+            )
+
             b = self.dev.i2c(data, 1, 0.01)
             self.logger.debug(format_debug_data("device returned: ", b))
 
             # Read the control register
             data = [CMD_READ_USER_REGISTER]
-            self.logger.debug(format_debug_data("Reading user control byte: ", data))
-            b = self.dev.i2c(data, 1, 0.01)
-            self.logger.debug(format_debug_data("device returned: ", b))
+            self.logger.debug(
+              format_debug_data("Reading user control byte: ", data)
+            )
 
-            # Write to the control register
-            # set the measurement resultion to 12 bit (RH) and 15 bit (temperature)
+            b = self.dev.i2c(data, 1, 0.01)
+            self.logger.debug(
+              format_debug_data("device returned: ", b)
+            )
+
+            # Write to the control register set the measurement resultion to 12
+            # bit (RH) and 15 bit (temperature)
             b[0] = 0x81 | b[0]
 
             # disable the on chip heater
@@ -140,23 +141,35 @@ class SI7020(i2cPrototype, PointHandler):
 
             # get the humidity reading
             data = [CMD_READ_HUMIDITY_HOLD]
-            self.logger.debug(format_debug_data("Reading humidity - Sending: ", data))
+            self.logger.debug(
+              format_debug_data("Reading humidity - Sending: ", data)
+            )
             b = self.dev.i2c(data, 3, 0.01)
-            self.logger.debug(format_debug_data("device returned: ", b))
+            self.logger.debug(
+              format_debug_data("device returned: ", b)
+            )
             i = b[0] << 8 | b[1]
             self.point_humidity.value = 125 * i / 65536 - 6
 
             # Get the temperature reading
             data = [CMD_READ_PREVIOUS_TEMPERATURE]
-            self.logger.debug(format_debug_data("Reading temperature - Sending: ", data))
+            self.logger.debug(
+              format_debug_data("Reading temperature - Sending: ", data)
+            )
+
             b = self.dev.i2c(data, 2, 0.01)
-            self.logger.debug(format_debug_data("device returned: ", b))
+            self.logger.debug(
+              format_debug_data("device returned: ", b)
+            )
             i = b[0] << 8 | b[1]
             self.point_temperature.value = 175.72 * i / 65536 - 46.85
 
             # Get the user register
             data = [CMD_READ_USER_REGISTER]
-            self.logger.debug(format_debug_data("Reading User register = Sending: ", data))
+            self.logger.debug(
+              format_debug_data("Reading User register = Sending: ", data)
+            )
+
             b = self.dev.i2c(data, 1, 0.01)
             self.logger.debug(format_debug_data("device returned: ", b))
             self.point_run_heater.value = b[0] & 0x04
@@ -171,10 +184,25 @@ class SI7020(i2cPrototype, PointHandler):
 
             self.alarm_comm_fail.input = False
 
-            self.logger.debug("temperature next read: %s", str(self.point_temperature.next_update))
-            self.logger.debug("humidity next read: %s", str(self.point_humidity.next_update))
-            self.logger.debug("run heater next read: %s", str(self.point_run_heater  .next_update))
-            self.logger.debug("SI7020 successfully read. Next read at: %s ", str(self.next_update))
+            self.logger.debug(
+              "temperature next read: %s",
+              str(self.point_temperature.next_update)
+            )
+
+            self.logger.debug(
+              "humidity next read: %s",
+              str(self.point_humidity.next_update)
+            )
+
+            self.logger.debug(
+              "run heater next read: %s",
+              str(self.point_run_heater  .next_update)
+            )
+
+            self.logger.debug(
+              "SI7020 successfully read. Next read at: %s ",
+              str(self.next_update)
+            )
 
         except OSError as e:
             self.logger.error("read I/O error " + str(e))

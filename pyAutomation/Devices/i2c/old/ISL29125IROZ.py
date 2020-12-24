@@ -11,7 +11,7 @@ import datetime
 logger = logging.getLogger('controller')
 
 # Intersil ISL29125IROZ-T7A color sensor
-class ISL29125IROZ(object):
+class ISL29125IROZ(PointHandler):
     '''
     http://www.intersil.com/content/dam/Intersil/documents/isl2/isl29125.pdf
     '''

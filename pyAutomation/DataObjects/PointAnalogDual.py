@@ -33,7 +33,10 @@ class PointAnalogDual(
         super().sanity_check()
 
     # callback sent to points that feed this object.
-    def interrupt(self, name: 'str'):
+    def interrupt(self, 
+      name: 'str',
+      reason: 'Any',
+    ):
         i = 0.0
         j = 0.0
         if self._point_1.quality:

@@ -1,12 +1,4 @@
-#!/usr/bin/python3
-"""
-Created on Apr 16, 2016
-
-@author: Bruce
-"""
-
 import traceback
-
 from .linuxi2c3 import IIC
 from .i2cPrototype import i2cPrototype
 from pyAutomation.Supervisory.PointHandler import PointHandler
@@ -38,11 +30,11 @@ def _create_check_sum(data):
 class K30(i2cPrototype, PointHandler):
 
     _points_list = {
-      'point_co2_level':           {'type': 'PointAnalog',   'access': 'rw'},
+      'point_co2_level': {'type': 'PointAnalog', 'access': 'rw'},
       'point_calibration_running': {'type': 'PointDiscrete', 'access': 'rw'},
-      'point_abc_period':          {'type': 'PointAnalog',   'access': 'rw'},
+      'point_abc_period': {'type': 'PointAnalog', 'access': 'rw'},
 
-      'alarm_comm_fail':           {'type': "Alarm", 'access': 'rw'},
+      'alarm_comm_fail': {'type': "Alarm", 'access': 'rw'},
     }
 
     parameters = {}
@@ -118,7 +110,8 @@ class K30(i2cPrototype, PointHandler):
 
             if _validate_checksum(b):
                 self.meter_control_byte = b[1]
-                self.point_calibration_running.value = (self.meter_control_byte and 0x02) > 0
+                self.point_calibration_running.value = \
+                  (self.meter_control_byte and 0x02) > 0
                 c = [b[2], b[3]]
                 self.point_co2_level.value = int.from_bytes(c, byteorder='big')
                 self.alarm_comm_fail.input = False
@@ -130,7 +123,9 @@ class K30(i2cPrototype, PointHandler):
         except OSError as e:
             self.alarm_comm_fail.input = True
             self.consecutive_faults += 1
-            self.logger.info("read I/O fault " + str(self.consecutive_faults) + str(e))
+            self.logger.info(
+              "read I/O fault " + str(self.consecutive_faults) + str(e)
+            )
 
         except Exception as e:
             self.logger.error(traceback.format_exc())
@@ -139,7 +134,6 @@ class K30(i2cPrototype, PointHandler):
             if self.alarm_comm_fail.active:
                 self.point_co2_level.quality = False
                 self.point_calibration_running.quality = False
-
 
             if self.dev is not None:
                 self.dev.close()
@@ -150,8 +144,8 @@ class K30(i2cPrototype, PointHandler):
         try:
             # Open up the IIC channel
             self.dev = IIC(ADDRESS, self.bus)
-            # Read from RAM (2), two bytes (2) starting at 0x40, checksum is 0x62) Get 5 bytes back, 10ms delay
-            # between write and read.
+            # Read from RAM (2), two bytes (2) starting at 0x40, checksum is
+            # 0x62) Get 5 bytes back, 10ms delay between write and read.
             b = self.dev.i2c([0x22, 0x00, 0x40, 0x62], 4, 0.05)
             if _validate_checksum(b):
                 c = [b[1], b[2]]
@@ -161,13 +155,16 @@ class K30(i2cPrototype, PointHandler):
                 self.point_abc_period.quality = False
                 self.alarm_comm_fail.input = True
                 retry = True
+
         except OSError as e:
             self.logger.error("I/O error " + str(e))
             self.point_abc_period.quality = False
             retry = True
             self.alarm_comm_fail.input = True
+
         except Exception as e:
             self.logger.error(traceback.format_exc())
+
         finally:
             if self.dev is not None:
                 self.dev.close()
@@ -185,10 +182,14 @@ class K30(i2cPrototype, PointHandler):
         # Baseline calibration request
         if not self.point_calibration_running.value:
             try:
-                self.logger.debug("Attempting to write K30 baseline calibration request")
+                self.logger.debug("Attempting to write K30 baseline "
+                  "calibration request")
+
                 self.dev = IIC(ADDRESS, self.bus)
-                # self.dev.i2c([CMD_WRITE_TWO_BYTES (0x12), MEMORY_LOCATION (0x00, 0x67), CMD_BACKGROUND_CALIBRATION
-                # (0x7C 0x06), Checksum],5, 0.01)
+
+                # self.dev.i2c([CMD_WRITE_TWO_BYTES (0x12), MEMORY_LOCATION
+                # (0x00, 0x67), CMD_BACKGROUND_CALIBRATION (0x7C 0x06),
+                # Checksum],5, 0.01)
                 b = self.dev.i2c([0x12, 0x00, 0x67, 0x7C, 0x06, 0xFB], 2, 0.05)
                 if _validate_checksum(b):
                     # Was the write successful? see manual page 30.
@@ -211,10 +212,20 @@ class K30(i2cPrototype, PointHandler):
             try:
                 self.logger.debug("Attempting to write K30 ABC period")
                 self.dev = IIC(ADDRESS, self.bus)
-                # self.dev.i2c([CMD_WRITE_TWO_BYTES (0x12), MEMORY_LOCATION (0x00, 0x40), value, Checksum],5, 0.01)
+                # self.dev.i2c([CMD_WRITE_TWO_BYTES (0x12), MEMORY_LOCATION
+                # (0x00, 0x40), value, Checksum],5, 0.01)
                 b = [0x12, 0x00, 0x40]
-                b += bytearray(int(self.point_abc_period.request_value).to_bytes(2, byteorder='big'))
-                b += bytearray(_create_check_sum(b).to_bytes(1, byteorder='big'))
+                b += bytearray(int(
+                  self.point_abc_period.request_value).to_bytes(
+                    2,
+                    byteorder='big',
+                  )
+                )
+
+                b += bytearray(
+                  create_check_sum(b).to_bytes(1, byteorder='big')
+                )
+
                 self.logger.debug("byte array:" + str(b))
                 b = self.dev.i2c(b, 2, 0.01)
                 if _validate_checksum(b):
@@ -226,13 +237,17 @@ class K30(i2cPrototype, PointHandler):
                         self.point_abc_period.request_value = None
                         # Queue a read.
                     else:
-                        self.logger.info("K30 write ABC Period command unsuccessful.")
+                        self.logger.info("K30 write ABC Period command "
+                          "unsuccessful.")
                 else:
                     self.logger.debug("K30 write ABC Period bad checksum.")
+
             except OSError as e:
                 self.logger.info("I/O fault " + str(e))
+
             except Exception as e:
                 self.logger.error(traceback.format_exc())
+
             finally:
                 self.dev.close()
 

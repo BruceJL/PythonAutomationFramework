@@ -241,7 +241,10 @@ class Point(PointAbstract, ABC):
         if self._forced == False:
             # Fire the writer to reset the point to its correct value.
             if self.writer is not None:
-                self.writer.interrupt(self.name + " unforced")
+                self.writer.interrupt(
+                  name = self.name + " unforced",
+                  reason = self,
+                )
 
     forced = property(_get_forced, _set_forced)
 
@@ -260,6 +263,12 @@ class Point(PointAbstract, ABC):
 
     next_update = property(_get_next_update, _set_next_update)
 
+    def _get_readonly(self) -> 'bool':
+        return False
+
+    readonly = property(_get_readonly)
+
+    # HMI Stuff
     # values from the HMI
     def _get_hmi_value(self) -> str:
         return self.value
@@ -336,7 +345,10 @@ class Point(PointAbstract, ABC):
         if self.writer is not None:
             # Interrupt the thread that owns this point so it can decide
             # what to do with the request.
-            self.writer.interrupt(self.name)
+            self.writer.interrupt(
+              name=self.name,
+              reason=self,
+            )
 
     # Get and set the owner process
     def _get_writer(self):

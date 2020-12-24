@@ -12,7 +12,6 @@ pyAutomation/DataObjects/AlarmAnalog.py
 pyAutomation/DataObjects/Point.py
 pyAutomation/DataObjects/PointAbstract.py
 pyAutomation/DataObjects/PointAnalog.py
-pyAutomation/DataObjects/PointAnalogAbstract.py
 pyAutomation/DataObjects/PointAnalogDual.py
 pyAutomation/DataObjects/PointAnalogReadOnlyAbstract.py
 pyAutomation/DataObjects/PointAnalogScaled.py
@@ -22,7 +21,9 @@ pyAutomation/DataObjects/PointReadOnly.py
 pyAutomation/DataObjects/PointReadOnlyAbstract.py
 pyAutomation/DataObjects/PointSaveable.py
 pyAutomation/DataObjects/ProcessValue.py
+pyAutomation/DataObjects/__init__.py
 pyAutomation/Devices/I2cDriver.py
+pyAutomation/Devices/__init__.py
 pyAutomation/Devices/i2c/ADS1015IDGSR.py
 pyAutomation/Devices/i2c/K30.py
 pyAutomation/Devices/i2c/MCP23017.py
@@ -52,13 +53,3 @@ pyAutomation/Supervisory/PointManager.py
 pyAutomation/Supervisory/RpcServer.py
 pyAutomation/Supervisory/SupervisedThread.py
 pyAutomation/Supervisory/__init__.py
-pyAutomation/test/AlarmAnalog_test.py
-pyAutomation/test/Alarm_test.py
-pyAutomation/test/PointAnalogDual_test.py
-pyAutomation/test/PointAnalogScaled_test.py
-pyAutomation/test/PointAnalog_test.py
-pyAutomation/test/PointDiscrete_test.py
-pyAutomation/test/PointEnumeration_test.py
-pyAutomation/test/PointReadOnly_test.py
-pyAutomation/test/ProcessValue_test.py
-pyAutomation/test/__init__.py

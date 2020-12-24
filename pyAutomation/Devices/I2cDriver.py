@@ -53,9 +53,9 @@ class I2cDriver(SupervisedThread):
                     # Assign points to the module.
                     PointManager().assign_points(
                       data=config[device],
-                      target=device_instance,
+                      point_handler=device_instance,
                       target_name=device,
-                      thread=self,
+                      supervised_thread=self,
                     )
 
                     # Populate module parameters.
@@ -118,7 +118,7 @@ class I2cDriver(SupervisedThread):
                     self.logger.error(
                       " %s can't be setup. Delaying until %s",
                       device_to_run.name, str(t))
-                    device_to_run.delay_until = t
+                    device_to_ru    n.delay_until = t
 
             except Exception as e:
                 self.logger.error(traceback.format_exc())

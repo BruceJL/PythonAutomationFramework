@@ -2,7 +2,7 @@
 import serial
 import time
 ser = serial.Serial("/dev/ttyAMA0")
-print "Serial Connected!"
+print("Serial Connected!")
 ser.flushInput()
 time.sleep(1)
 
@@ -13,8 +13,8 @@ while True:
     high = ord(resp[3])
     low = ord(resp[4])
     co2 = (high*256) + low
-    print ""
-    print ""
-    print "Co2 = " + str(co2)
+    print("")
+    print("")
+    print("Co2 = " + str(co2))
     time.sleep(1)
 

@@ -127,10 +127,13 @@ class Supervisor(object):
         section = 'SupervisedThreads'
         for thread_name in cfg[section]:
             self.logger.info(
-              "attempting to import %s",  cfg[section][thread_name]["module"])
+              "attempting to import {}".format(
+                cfg[section][thread_name]["module"]))
+            
             imported_module = import_module(
               cfg[section][thread_name]["module"],
               cfg[section][thread_name]["package"])
+            
             for i in dir(imported_module):
                 attribute = getattr(imported_module, i)
 
@@ -141,7 +144,7 @@ class Supervisor(object):
                     # Everything looks valid,
                     # import the instansiate the module.
 
-                    concrete_thread = attribute(
+                    supervised_thread = attribute(
                       name=thread_name,
                       logger=cfg[section][thread_name]["logger"]
                     )
@@ -151,27 +154,28 @@ class Supervisor(object):
                     # Populate module points
                     PointManager().assign_points(
                       data=cfg[section][thread_name],
-                      target=concrete_thread,
+                      point_handler=supervised_thread,
                       target_name=thread_name,
-                      thread=concrete_thread,
+                      supervised_thread=supervised_thread,
                     )
 
                     # Populate module assign_parameters
                     PointManager().assign_parameters(
                       cfg[section][thread_name],
-                      concrete_thread)
+                      supervised_thread)
 
                     # Now that the points and parameters are assigned. Run any
                     # remaining configuration
+                    # config is free form specific to the device where required.
                     if "config" in cfg[section][thread_name]:
                         config = cfg[section][thread_name]['config']
                     else:
                         config = None
 
-                    concrete_thread.config(config=config)
+                    supervised_thread.config(config=config)
 
                     # Append the fully built module to the threads dict.
-                    self.threads.append(concrete_thread)
+                    self.threads.append(supervised_thread)
 
         # Fire up all the threads.
         for i in self.threads:

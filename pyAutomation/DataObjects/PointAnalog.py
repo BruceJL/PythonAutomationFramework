@@ -1,11 +1,11 @@
-from pyAutomation.DataObjects.PointAnalogAbstract import PointAnalogAbstract
-from pyAutomation.DataObjects.PointAnalogReadOnlyAbstract import PointAnalogReadOnlyAbstract
 from pyAutomation.DataObjects.PointReadOnly import PointReadOnly
+from pyAutomation.DataObjects.PointAnalogReadOnlyAbstract import PointAnalogReadOnlyAbstract
 from pyAutomation.DataObjects.Point import Point
-from typing import Dict, Any, List
 
 
-class PointAnalog(Point, PointAnalogAbstract):
+class PointAnalog(Point, PointAnalogReadOnlyAbstract):
+    """ Concrete implementation of an Analog point. Stores values as floats.
+    PointAnalogs can be quantized or continous. """
     yaml_tag = u'!PointAnalog'
 
     def _get_keywords(self) -> 'List[str]':
@@ -13,7 +13,7 @@ class PointAnalog(Point, PointAnalogAbstract):
 
     keywords = property(_get_keywords)
 
-    def __init__(self, **kwargs: object) -> None:
+    def __init__(self, **kwargs: object) -> 'None':
         self._u_of_m = None  # type: 'str'
         self._value = 0.0  # type: 'float'
         super().__init__(**kwargs)

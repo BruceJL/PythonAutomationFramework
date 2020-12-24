@@ -1,10 +1,10 @@
-from abc import abstractmethod
-from datetime import datetime
+from abc import abstractmethod, ABC
 from .PointReadOnlyAbstract import PointReadOnlyAbstract
-from typing import List
 
 
-class PointAbstract(PointReadOnlyAbstract):
+class PointAbstract(PointReadOnlyAbstract, ABC):
+    ''' Extends the PointAbstract method and provides additional writing methods
+    such that a concrete read/write point can be derived from this class '''
 
     hmi_writeable = False
 

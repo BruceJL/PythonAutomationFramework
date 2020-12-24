@@ -7,7 +7,6 @@ Created on Apr 11, 2016
 
 from pyAutomation.DataObjects.Alarm import Alarm
 from pyAutomation.DataObjects.PointAnalog import PointAnalog
-from pyAutomation.DataObjects.PointAnalogAbstract import PointAnalogAbstract
 from pyAutomation.Devices.i2c.i2cPrototype import i2cPrototype
 from pyAutomation.Supervisory.PointHandler import PointHandler
 
@@ -72,9 +71,9 @@ class TMD3782(i2cPrototype, PointHandler):
 
     _points_list = {
       'point_clear_light_level': {'type': 'PointAnalog', 'access': 'rw'},
-      'point_red_light_level':   {'type': 'PointAnalog', 'access': 'rw'},
+      'point_red_light_level': {'type': 'PointAnalog', 'access': 'rw'},
       'point_green_light_level': {'type': 'PointAnalog', 'access': 'rw'},
-      'point_blue_light_level':  {'type': 'PointAnalog', 'access': 'rw'},
+      'point_blue_light_level': {'type': 'PointAnalog', 'access': 'rw'},
 
       'alarm_comm_fail': {'type': "Alarm", 'access': 'rw'},
     }
@@ -83,10 +82,10 @@ class TMD3782(i2cPrototype, PointHandler):
 
     def __init__(self, name: str, bus: int, logger: str) -> None:
         self.bus = bus
-        self.point_clear_light_level = None  # type: 'PointAnalogAbstract'
-        self.point_red_light_level = None    # type: 'PointAnalogAbstract'
-        self.point_green_light_level = None  # type: 'PointAnalogAbstract'
-        self.point_blue_light_level = None   # type: 'PointAnalogAbstract'
+        self.point_clear_light_level = None  # type: 'PointAnalog'
+        self.point_red_light_level = None    # type: 'PointAnalog'
+        self.point_green_light_level = None  # type: 'PointAnalog'
+        self.point_blue_light_level = None   # type: 'PointAnalog'
         self.dev = None                      # type: 'int'
         self.device_points = None            # type: 'List[PointAnalog]'
         self.alarm_comm_fail = None          # type: 'Alarm'
@@ -190,7 +189,9 @@ class TMD3782(i2cPrototype, PointHandler):
                 self.point_green_light_level.value = (b[6] << 8 | b[5])
                 self.point_blue_light_level.value = (b[8] << 8 | b[7])
                 self.alarm_comm_fail.input = False
-                # self.logger.debug("Clear light level: %s", self.point_clear_light_level.value)
+                # self.logger.debug("Clear light level: %s",
+                #   self.point_clear_light_level.value
+                # )
             else:
                 self.logger.warn("data read unsuccessful")
                 self.is_setup = False
