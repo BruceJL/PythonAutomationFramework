@@ -79,12 +79,6 @@ class PointDiscrete(Point):
         self.on_state_description = d['on_state_description']
         self.off_state_description = d['off_state_description']
 
-    # Get an object suitable for storage in a yaml file.
-    def _get_yamlable_object(self) -> 'PointAbstract':
-        return self
-
-    yamlable_object = property(_get_yamlable_object)
-
     def _get_yaml_dict(self) -> 'Dict[str, Any]':
         d = super()._get_yaml_dict()
         d.update({

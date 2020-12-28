@@ -1,31 +1,38 @@
 import unittest
-from DataObjects.PointAnalog import PointAnalog
 import jsonpickle
 import ruamel.yaml
 from ruamel.yaml.compat import StringIO
 
+from pyAutomation.DataObjects.PointEnumeration import PointEnumeration
 
-class TestPointAnalog(unittest.TestCase):
+
+class TestPointEnumeration(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
-        self.point = PointAnalog(
-          description="Temperature reading 1",
-          u_of_m="ºC",
+        self.point = PointEnumeration(
+          description="Pump System State",
           hmi_writeable=True,
-          update_period=1.0,
+          requestable=True,
+          states=["OFF", "RUN", "DEPRESSURIZE", "FLUSH"],
           retentive=True,
         )
-        self.point.config("temp_1")
-        self.point.value = 50.0
+        self.point.config("feed_state")
+        self.point.value = "FLUSH"
 
     def test_a_json_pickle(self):
         pickle_text = jsonpickle.encode(self.point)
         unpickled_point = jsonpickle.decode(pickle_text)
+        unpickled_point.config("feed_state")
 
         self.assertEqual(
           self.point.name,
           unpickled_point.name,
+        )
+
+        self.assertEqual(
+          self.point.states,
+          unpickled_point.states,
         )
 
         self.assertEqual(
@@ -58,21 +65,12 @@ class TestPointAnalog(unittest.TestCase):
           unpickled_point.quality,
         )
 
-        self.assertEqual(
-          self.point.u_of_m,
-          unpickled_point.u_of_m,
-        )
-
-    def test_set_hmi_value(self):
-        self.point.hmi_value = "100.0"
-        self.assertEqual(100.0, self.point.hmi_value)
-
     def test_a_yaml_pickle(self):
         yml = ruamel.yaml.YAML(typ='safe', pure=True)
         yml.default_flow_style = False
         yml.indent(sequence=4, offset=2)
 
-        yml.register_class(PointAnalog)
+        yml.register_class(PointEnumeration)
 
         stream = StringIO()
         yml.dump(self.point, stream)
@@ -97,17 +95,17 @@ class TestPointAnalog(unittest.TestCase):
 
         self.assertEqual(
           self.point.hmi_writeable,
-          unpickled_point.hmi_writeable,
+          unpickled_point.hmi_writeable
         )
 
         self.assertEqual(
           self.point.update_period,
-          unpickled_point.update_period
+          unpickled_point.update_period,
         )
 
         self.assertEqual(
-          self.point.u_of_m,
-          unpickled_point.u_of_m,
+          self.point.states,
+          unpickled_point.states,
         )
 
         self.assertEqual(

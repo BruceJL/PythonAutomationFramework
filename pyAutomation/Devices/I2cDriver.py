@@ -118,23 +118,28 @@ class I2cDriver(SupervisedThread):
                     self.logger.error(
                       " %s can't be setup. Delaying until %s",
                       device_to_run.name, str(t))
-                    device_to_ru    n.delay_until = t
+                    device_to_run.delay_until = t
 
-            except Exception as e:
+            except Exception:
                 self.logger.error(traceback.format_exc())
                 self.logger.error("Shutting down %s", device_to_run.name)
                 self.devices.remove(device_to_run)
 
         # Figure out which device will be read next.
-        next_read_time = datetime.max  # The earliest next read time
-        longest_wait_time = timedelta.min  # the longest time that a device has been waiting.
+        # The earliest next read time
+        next_read_time = datetime.max
+
+        # The longest time that a device has been waiting
+        longest_wait_time = timedelta.min
+
         device_next_read = None
 
         for device in self.devices:
             i = device.next_update
             if i is not None:
 
-                # if i is in the past, then pick the device that's been waiting the longest.
+                # if i is in the past, then pick the device that's been waiting
+                # the longest.
                 if i < now:
                     i = now - device.last_io_attempt
                     if i > longest_wait_time:
@@ -142,7 +147,8 @@ class I2cDriver(SupervisedThread):
                         device_next_read = device
                         next_read_time = now
 
-                # if i is in the future, select the shortest wait time among the devices
+                # if i is in the future, select the shortest wait time among the
+                # devices
                 elif i < next_read_time:
                     next_read_time = i
                     device_next_read = device

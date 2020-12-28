@@ -1,4 +1,3 @@
-import logging
 import threading
 import time
 import typing
@@ -15,10 +14,12 @@ class AlarmHandler(SupervisedThread):
         # this condition controls access to the list of active alarms.
         self.active_alarm_list_condition = threading.Condition()
 
-        # alarm_cleanup condition is used to control access to active alarm_timer_remove_list.
+        # alarm_cleanup condition is used to control access to active alarm_
+        # timer_remove_list.
         self.alarm_timer_list_remove_condition = threading.Condition()
 
-        # alarm_cleanup condition is used to control access to active alarm_timer_remove_list.
+        # alarm_cleanup condition is used to control access to active alarm_
+        # timer_remove_list.
         self.alarm_timer_list_add_condition = threading.Condition()
 
         # flag used to indicate that we need to restart the thread.

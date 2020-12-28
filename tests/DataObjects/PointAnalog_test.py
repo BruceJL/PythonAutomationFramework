@@ -1,32 +1,42 @@
 import unittest
-from DataObjects.PointDiscrete import PointDiscrete
 import jsonpickle
-import datetime
 import ruamel.yaml
 from ruamel.yaml.compat import StringIO
 
+from pyAutomation.DataObjects.PointAnalog import PointAnalog
 
-class TestPointDiscrete(unittest.TestCase):
+
+class TestPointAnalog(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
-        self.point = PointDiscrete(
-          description           = "Pump run",
-          on_state_description  = "Running",
-          off_state_description = "Stopped",
-          hmi_writeable         = True,
-          requestable           = True,
-          retentive             = True,
-          update_period         = 20.0,
+        self.point = PointAnalog(
+          description="Temperature reading 1",
+          u_of_m="ºC",
+          hmi_writeable=True,
+          update_period=1.0,
+          retentive=True,
         )
+        self.point.config("temp_1")
+        self.point.value = 50.0
 
-    def test_json_pickle(self):
+    def test_a_json_pickle(self):
         pickle_text = jsonpickle.encode(self.point)
         unpickled_point = jsonpickle.decode(pickle_text)
 
         self.assertEqual(
+          self.point.name,
+          unpickled_point.name,
+        )
+
+        self.assertEqual(
           self.point.description,
           unpickled_point.description,
+        )
+
+        self.assertEqual(
+          self.point.value,
+          unpickled_point.value,
         )
 
         self.assertEqual(
@@ -35,41 +45,47 @@ class TestPointDiscrete(unittest.TestCase):
         )
 
         self.assertEqual(
-          self.point.hmi_writeable,
-          unpickled_point.hmi_writeable,
+          self.point.forced,
+          unpickled_point.forced,
         )
 
         self.assertEqual(
-          self.point.on_state_description,
-          unpickled_point.on_state_description,
+          self.point.last_update,
+          unpickled_point.last_update,
         )
 
         self.assertEqual(
-          self.point.off_state_description,
-          unpickled_point.off_state_description,
+          self.point.quality,
+          unpickled_point.quality,
         )
 
         self.assertEqual(
-          self.point.value,
-          unpickled_point.value,
+          self.point.u_of_m,
+          unpickled_point.u_of_m,
         )
+
+    def test_set_hmi_value(self):
+        self.point.hmi_value = "100.0"
+        self.assertEqual(100.0, self.point.hmi_value)
 
     def test_a_yaml_pickle(self):
         yml = ruamel.yaml.YAML(typ='safe', pure=True)
         yml.default_flow_style = False
         yml.indent(sequence=4, offset=2)
 
-        yml.register_class(PointDiscrete)
+        yml.register_class(PointAnalog)
 
         stream = StringIO()
         yml.dump(self.point, stream)
         s=stream.getvalue()
         unpickled_point = yml.load(s)
+        unpickled_point.config("feed_state")
 
         self.assertEqual(
           self.point.description,
           unpickled_point.description,
         )
+
         self.assertEqual(
           self.point.requestable,
           unpickled_point.requestable,
@@ -87,17 +103,12 @@ class TestPointDiscrete(unittest.TestCase):
 
         self.assertEqual(
           self.point.update_period,
-          unpickled_point.update_period,
+          unpickled_point.update_period
         )
 
         self.assertEqual(
-          self.point.on_state_description,
-          unpickled_point.on_state_description
-        )
-
-        self.assertEqual(
-          self.point.off_state_description,
-          unpickled_point.off_state_description
+          self.point.u_of_m,
+          unpickled_point.u_of_m,
         )
 
         self.assertEqual(

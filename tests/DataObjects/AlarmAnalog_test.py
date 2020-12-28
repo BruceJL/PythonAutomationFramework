@@ -4,6 +4,7 @@ import jsonpickle
 import ruamel.yaml
 from ruamel.yaml.compat import StringIO
 
+from pyAutomation.DataObjects.Alarm import Alarm
 from pyAutomation.DataObjects.AlarmAnalog import AlarmAnalog
 from pyAutomation.Supervisory.AlarmHandler import AlarmHandler
 
@@ -28,14 +29,14 @@ class TestAnalogAlarmAnalog(unittest.TestCase):
           more_info="Temperature is rising above safe levels. The cooling "
             "system may be failing.",
         )
-        self.alarm.config("h1_temperature")
+        self.alarm.name = "h1_temperature"
 
         self.ah = AlarmHandler(
           logger=logger,
           name="alarm processer",
         )
 
-        AlarmAnalog.set_alarm_handler(self.ah)
+        Alarm.alarm_handler = self.ah
         self.logger.debug("setUpClass completed.")
 
     def test_a_json_pickle(self):

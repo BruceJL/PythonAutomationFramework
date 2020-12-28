@@ -1,14 +1,14 @@
-from DataObjects.PointAnalog import PointAnalog
-from DataObjects.PointDiscrete import PointDiscrete
-from DataObjects.Alarm import Alarm
-from DataObjects.AlarmAnalog import AlarmAnalog
-from DataObjects.ProcessValue import ProcessValue
-from DataObjects.PointReadOnly import PointReadOnly
-
 import unittest
 import jsonpickle
 import ruamel.yaml
 from ruamel.yaml.compat import StringIO
+
+from pyAutomation.DataObjects.PointAnalog import PointAnalog
+from pyAutomation.DataObjects.PointDiscrete import PointDiscrete
+from pyAutomation.DataObjects.Alarm import Alarm
+from pyAutomation.DataObjects.AlarmAnalog import AlarmAnalog
+from pyAutomation.DataObjects.ProcessValue import ProcessValue
+from pyAutomation.DataObjects.PointReadOnly import PointReadOnly
 
 
 class TestProcessValue(unittest.TestCase):
@@ -20,7 +20,7 @@ class TestProcessValue(unittest.TestCase):
           hmi_writeable=False,
           update_period=0.333333,
         )
-        point_pump_water_pressure.config("pump_water_pressure")
+        point_pump_water_pressure.name = "pump_water_pressure"
         point_pump_water_pressure.value = 123.45
 
         point_pump_on_water_pressure = PointAnalog(
@@ -29,7 +29,7 @@ class TestProcessValue(unittest.TestCase):
           hmi_writeable=True,
           value=115.0,
         )
-        point_pump_on_water_pressure.config("pump_on_water_pressure")
+        point_pump_on_water_pressure.name = "pump_on_water_pressure"
 
         point_pump_off_water_pressure = PointAnalog(
           description="Pump water pressure off setpoint",
@@ -37,7 +37,7 @@ class TestProcessValue(unittest.TestCase):
           hmi_writeable=True,
           value=125.0,
         )
-        point_pump_off_water_pressure.config("pump_off_water_pressure")
+        point_pump_off_water_pressure.name = "pump_off_water_pressure"
 
         alarm_h1_pump_water_pressure = AlarmAnalog(
           description="Pump pressure H1",
@@ -52,7 +52,7 @@ class TestProcessValue(unittest.TestCase):
             "the H1 level. The H1 level provides a safety mechanism and "
             "prevents the pump from overpressuring the system.",
         )
-        alarm_h1_pump_water_pressure.config("h1_pump_water_pressure")
+        alarm_h1_pump_water_pressure.name = "h1_pump_water_pressure"
 
         alarm_h2_pump_water_pressure = AlarmAnalog(
           description="Pump pressure H2",
@@ -65,11 +65,11 @@ class TestProcessValue(unittest.TestCase):
             "The system will attempt to bleed all pressure. The charge and "
             "relief valves will be opened until this  alarm is acknowledged.",
           more_info=
-            "The pump relay is likely stuck closed. The system pressure will be
-            "bled to prevent overpressure and prevent thermal failure of the
+            "The pump relay is likely stuck closed. The system pressure will "
+            "be bled to prevent overpressure and prevent thermal failure of the"
             "pump by allowing water to circulate.",
         )
-        alarm_h2_pump_water_pressure.config("h2_pump_water_pressure")
+        alarm_h2_pump_water_pressure.name = "h2_pump_water_pressure"
 
         alarm_l1_pump_water_pressure = AlarmAnalog(
           description="Pump pressure L1",
@@ -82,7 +82,7 @@ class TestProcessValue(unittest.TestCase):
           more_info="The pump may have failed or a leak may have developed on "
             "the high pressure side",
         )
-        alarm_l1_pump_water_pressure.config("l1_pump_water_pressure")
+        alarm_l1_pump_water_pressure.name = "l1_pump_water_pressure"
 
         alarm_l2_pump_water_pressure = AlarmAnalog(
           description="Pump pressure L2",
@@ -95,7 +95,7 @@ class TestProcessValue(unittest.TestCase):
           more_info="The pump may have failed or a leak may have developed on "
             "the high pressure side",
         )
-        alarm_l1_pump_water_pressure.config("l2_pump_water_pressure")
+        alarm_l1_pump_water_pressure.name = "l2_pump_water_pressure"
 
         # Logic driven pump related alarms.
         alarm_pump_runtime_fault = Alarm(
@@ -107,7 +107,7 @@ class TestProcessValue(unittest.TestCase):
           more_info="The following may be happened: pump may be run dry, "
             "failing, or a leak may have developed.",
         )
-        alarm_pump_runtime_fault.config("pump_runtime_fault")
+        alarm_pump_runtime_fault.name  = "pump_runtime_fault"
 
         # Active pressure decay constant. Measures how fast the pressure in the
         # accumlator tank drops when the valves are open. Too much indicates a
@@ -117,7 +117,7 @@ class TestProcessValue(unittest.TestCase):
           u_of_m="%",
           hmi_writeable=False,
         )
-        point_active_pressure_decay.config("active_pressure_decay")
+        point_active_pressure_decay.name = "active_pressure_decay"
 
         alarm_h1_active_pressure_decay = AlarmAnalog(
           description="Pressure decay high - misting clog detected",
@@ -127,10 +127,10 @@ class TestProcessValue(unittest.TestCase):
           off_delay=180,
           high_low_limit="HIGH",
           consequences="None",
-          more_info="The system has detected that the pressure accumulator is
-          "not draing at the proper rate.",
+          more_info="The system has detected that the pressure accumulator is "
+            + "not draing at the proper rate.",
         )
-        alarm_h1_active_pressure_decay.config("h1_active_pressure_decay")
+        alarm_h1_active_pressure_decay.name = "h1_active_pressure_decay"
 
         alarm_l1_active_pressure_decay = AlarmAnalog(
           description="Pressure decay low - misting leak",
@@ -143,7 +143,7 @@ class TestProcessValue(unittest.TestCase):
           more_info="The system has detected that the pressure accumulator is "
           "not draining at the proper rate."
         )
-        alarm_l1_active_pressure_decay.config("l1_active_pressure_decay")
+        alarm_l1_active_pressure_decay.name = "l1_active_pressure_decay"
 
         process_active_pressure_decay = \
           ProcessValue(point_active_pressure_decay)
@@ -166,7 +166,7 @@ class TestProcessValue(unittest.TestCase):
           u_of_m="%",
           hmi_writeable=False,
         )
-        point_static_pressure_decay.config("static_pressure_decay")
+        point_static_pressure_decay.name = "static_pressure_decay"
 
         alarm_l1_static_pressure_decay = AlarmAnalog(
           description="Pressure decay low - accumulator leak",
@@ -176,7 +176,7 @@ class TestProcessValue(unittest.TestCase):
           off_delay=180,
           high_low_limit="LOW",
         )
-        alarm_l1_static_pressure_decay.config("l1_static_pressure_decay")
+        alarm_l1_static_pressure_decay.name = "l1_static_pressure_decay"
 
         process_static_pressure_decay = ProcessValue(
           point_static_pressure_decay

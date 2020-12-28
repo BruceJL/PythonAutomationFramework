@@ -1,4 +1,4 @@
-from typing import List, TYPE_CHECKING
+from typing import TYPE_CHECKING
 from datetime import datetime, timedelta
 import logging
 import jsonpickle
@@ -6,6 +6,7 @@ import rpyc
 import pyAutomation.Supervisory.PointManager
 
 if TYPE_CHECKING:
+    from typing import List, Dict, Callable
     from pyAutomation.DataObjects.Alarm import Alarm
     from pyAutomation.DataObjects.PointAbstract import PointAbstract
     from pyAutomation.DataObjects.PointReadOnlyAbstract \
@@ -48,7 +49,7 @@ class RpcServer(rpyc.Service):
             point = self.get_hmi_point(p)
             assert point is not None
             self.point_list.update({p: point})
-        self.last_read_time = 0
+        self.last_read_time = datetime.now()
 
     def exposed_remove_monitored_points(self, points: List[str]) -> 'None':
         for p in points:

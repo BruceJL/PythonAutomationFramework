@@ -1,39 +1,42 @@
+from datetime import datetime
+
 from .PointAnalogReadOnlyAbstract import PointAnalogReadOnlyAbstract
 from pyAutomation.Supervisory.Interruptable import Interruptable
-from datetime import datetime
-from typing import List, Callable, Dict, Any
+
+from typing import Dict, Any
 
 
 class PointAnalogDual(
   PointAnalogReadOnlyAbstract,
-  Interruptable):
+  Interruptable,
+):
+
+    _name = None  # type: str
+    _value = 0.0  # type: float
+    _quality = False  # type: bool
+    _last_update = datetime.now()
+    _observers = {}  # type: Dict[str, Interruptable]
+    write_request = False
 
     def __init__(
       self,
-      point_1: PointAnalogReadOnlyAbstract,
-      point_2: PointAnalogReadOnlyAbstract,
-      description: str
+      point_1: 'PointAnalogReadOnlyAbstract',
+      point_2: 'PointAnalogReadOnlyAbstract',
+      description: 'str'
     ) -> 'None':
 
-        self._name = None
         self._point_1 = point_1
         self._point_2 = point_2
-        self._value = 0.0  # type: float
-        self._quality = False
         self._description = description
-        self._last_update = datetime.now()
-        self._observers = {}  # type: Dict[Callable[[str], None]]
 
-        self.write_request = False
-
-    def config(self, n: 'str') -> 'None':
-        self._name = n
+    def config(self) -> 'None':
         self._point_1.add_observer(self.name, self.interrupt)
         self._point_2.add_observer(self.name, self.interrupt)
         super().sanity_check()
 
     # callback sent to points that feed this object.
-    def interrupt(self, 
+    def interrupt(
+      self,
       name: 'str',
       reason: 'Any',
     ):
@@ -104,14 +107,15 @@ class PointAnalogDual(
 
     quality = property(_get_quality)
 
-    def add_observer(self, name: 'str', observer: 'Callable[str, None]') -> 'None':
+    def add_observer(
+      self,
+      name: 'str',
+      observer: 'Interruptable',
+    ) -> 'None':
         self._observers.update({name: observer})
-        # if self._name is not None:
-            # logger.info("observer: " + name + " added to point " + self.name)
 
     def del_observer(self, name: 'str') -> 'None':
         self._observers.pop(name)
-        # logger.info("observer: " + name + " removed from point " + self.name)
 
     # Unit of measure
     def _get_u_of_m(self) -> str:
@@ -143,16 +147,17 @@ class PointAnalogDual(
     def get_readwrite_object(self) -> 'PointAnalogDual':
         assert False, "Cannot get a writable object from a PointAnalogDual"
 
-    # The dict property is what is used by jsonpickle to transport the object over the network.
+    # The dict property is what is used by jsonpickle to transport the object
+    # over the network.
     def __getstate__(self) -> 'Dict[str, Any]':
         d = {
-          'name':        self._name,
-          'value':       self._value,
-          'quality':     self._quality,
+          'name': self._name,
+          'value': self._value,
+          'quality': self._quality,
           'description': self._description,
           'last_update': self._last_update,
-          'point_1':     self._point_1,
-          'point_2':     self._point_2,
+          'point_1': self._point_1,
+          'point_2': self._point_2,
         }
         return d
 
@@ -165,17 +170,11 @@ class PointAnalogDual(
         self._point_1     = d['point_1']
         self._point_2     = d['point_2']
 
-    # Get an object suitable for storage in a yaml file.
-    def _get_yamlable_object(self) -> 'PointAbstract':
-        return self
-
-    yamlable_object = property(_get_yamlable_object)
-
     # YAML representation for configuration storage.
     def _get_yaml_dict(self) -> 'Dict[str, Any]':
         d = {
-          'point_1':     self._point_1.yamlable_object,
-          'point_2':     self._point_2.yamlable_object,
+          'point_1': self._point_1,
+          'point_2': self._point_2,
           'description': self._description,
         }
         return d

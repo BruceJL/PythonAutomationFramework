@@ -4,8 +4,8 @@ import sys
 import logging
 import jsonpickle
 import ruamel
-import StringIO
 
+from io import StringIO
 from mock import patch, Mock
 from typing import Any
 
@@ -41,7 +41,7 @@ class TestAlarm(unittest.TestCase, Interruptable):
           consequences="Cooling control is unreliable",
           more_info="System does not know ambient temperature")
 
-        self.alarm.config("test alarm")
+        self.alarm.name = "test alarm"
 
         self.alarm.input = False
 
@@ -51,7 +51,7 @@ class TestAlarm(unittest.TestCase, Interruptable):
             # period=datetime.timedelta(seconds=5),
         )
 
-        Alarm.set_alarm_handler(self.ah)
+        Alarm.alarm_handler = self.ah
         self.logger.debug("setUpClass completed.")
 
     @classmethod

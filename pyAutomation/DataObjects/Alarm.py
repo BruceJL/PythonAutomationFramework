@@ -2,14 +2,14 @@ import datetime
 import dateutil.parser
 import logging
 import time
-from typing import TYPE_CHECKING, Dict, List, Callable, Any
-
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from Supervisory.AlarmHandler import AlarmHandler
+    from typing import Dict, List, Any
+    from .Supervisory.AlarmHandler import AlarmHandler
+    from .Supervisory.AlarmNotifier import AlarmNotifier
+    from .Supervisory.Interruptable import Interruptable
 
 logger = logging.getLogger('alarms')
-
-global_alarms = {}  # type: Dict['str', 'Alarm']
 
 
 class Alarm(object):
@@ -27,14 +27,64 @@ class Alarm(object):
 
     # notifiers are global alarm watchers for all alarms. They are used for
     # logging and remote alarm notification (e.g. email).
-    alarm_notifiers = [] # type: List[Callable[[str], None]]
+    alarm_notifiers = []  # type: List[AlarmNotifier]
 
-    alarm_handler = None
+    alarm_handler = None  # type: AlarmHandler
+
+    # alarm name in the global alarm dict.
+    _name = ""
+
+    description = "Unnamed alarm"  # type: str
+    #  Human friendly description
+
+    # The value set by logic to indicating an alarm condition
+    _input = False  # type: bool
+
+    # The value which allows the operator to suppress the alarm
+    blocked = False  # type: bool
+
+    # Indicates that the alarm has been ack'd by the operator
+    acknowledged = True  # type: bool
+
+    # Interlock value
+    enabled = True  # type: bool
+
+    # description of the bad things that will happen if this alarm is not
+    # addressed.
+    consequences = "None"  # type: str
+
+    # Additional info for this alarm
+    more_info = "None"  # type: str
+
+    # The time that the alarm was put into ALARM
+    _activation_time = datetime.datetime.now(datetime.timezone.utc)  # type: datetime.datetime
+
+    # The time that the alarm was reset
+    _is_reset_time = datetime.datetime.now(datetime.timezone.utc)  # type: datetime.datetime
+
+    # The current state of the alarm.
+    # Valid states are: OFF, ON_DELAY, ALARM, OFF_DELAY
+    _state = "OFF"  # type: str
+
+    # The delay before the alarm is acted upon by logic
+    on_delay = 0.0  # type: float
+
+    # The delay before the alarm is marked as reset when the input is
+    # lowered.
+    off_delay = 0.0  # type: float
+
+    _writer = None  # type: object
+
+    # events that will be run on change of state this alarm.
+    _observers = {}  # type: Dict[str, Interruptable]
+
+    # Current timer value.
+    _timer = None  # type: float
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
 
-    def __init__(self, **kwargs: object) -> None:
+    def __init__(self, **kwargs) -> None:
         """
         The constructor for Alarm class.
 
@@ -51,62 +101,13 @@ class Alarm(object):
             alarm condition (e.g. links to: drawings, manuals, or procedures)
         """
 
-        # alarm name in the global alarm dict.
-        self._name = ""
-
-        self.description = "Unnamed alarm"  # type: str
-        #  Human friendly description
-
-        # The value set by logic to indicating an alarm condition
-        self._input = False  # type: bool
-
-        # The value which allows the operator to suppress the alarm
-        self.blocked = False  # type: bool
-
-        # Indicates that the alarm has been ack'd by the operator
-        self.acknowledged = True  # type: bool
-
-        # Interlock value
-        self.enabled = True  # type: bool
-
-        # description of the bad things that will happen if this alarm is not
-        # addressed.
-        self.consequences = "None"  # type: str
-
-        # Additional info for this alarm
-        self.more_info = "None"  # type: str
-
-        self._activation_time = datetime.datetime.now(datetime.timezone.utc)  # type: datetime.datetime
-        # The time that the alarm was put into ALARM
-
-        # The time that the alarm was reset
-        self._is_reset_time = datetime.datetime.now(datetime.timezone.utc)  # type: datetime.datetime
-
-        # The current state of the alarm.
-        # Valid states are: OFF, ON_DELAY, ALARM, OFF_DELAY
-        self._state = "OFF"  # type: str
-
-        # Current timer value.
-        self._timer = None  # type: float
-
-        # The delay before the alarm is acted upon by logic
-        self.on_delay = 0.0  # type: float
-
-        # The delay before the alarm is marked as reset when the input is lowered.
-        self.off_delay = 0.0  # type: float
-
-        self._writer = None  # type: object
-
-        # events that will be run on change of state this alarm.
-        self._observers = {}  # type: Dict[Callable[[str], None]]
-
         for kw in kwargs:
             assert kw in self.keywords, \
-                "Cannot assign value of '" + kwargs[kw] +  "' to '" \
+                "Cannot assign value of '" + kwargs[kw] + "' to '" \
                 + str(kw) + "' property of Alarm, property does not exist"
             setattr(self, kw, kwargs[kw])
 
-    def config(self, n: 'str') -> 'None':
+    def config(self) -> 'None':
         """
         Sets the name of the alarm as it appears in the global alarm database.
 
@@ -114,7 +115,7 @@ class Alarm(object):
         n (str): name of the alarm
 
         """
-        self._name = n
+        pass
 
     def _get_name(self) -> 'str':
         """ Returns the name of the object with some error checking. """
@@ -123,7 +124,8 @@ class Alarm(object):
         return self._name
 
     def _set_name(self, name):
-        """ sets the name of the object with some error checking. Likely depreciated """
+        """ sets the name of the object with some error checking. Likely
+        depreciated """
         try:
             if(self._name is None):
                 self._name = name
@@ -143,7 +145,10 @@ class Alarm(object):
         an alarm annuciator.
 
         """
-        return "{} {} {}".format(str(self._activation_time), self.description, self.alarm_state)
+        return "{} {} {}".format(str(
+            self._activation_time),
+          self.description,
+          self.alarm_state)
 
     @property
     def state(self) -> str:
@@ -214,8 +219,10 @@ class Alarm(object):
             try:
                 Alarm.alarm_handler.remove_active_alarm(self)
             except ValueError:
-                logger.error("Tried to acknowledge " + self.description + " but it's not an active alarm")
-
+                logger.error(
+                    "Tried to acknowledge " + self.description
+                  + " but it's not an active alarm"
+                )
 
     def evaluate(self) -> None:
         """
@@ -323,12 +330,15 @@ class Alarm(object):
 
         for key, callback in self._observers.items():
             logger.debug("firing callback for " + key + " from " + self.name)
-            callback(name=self.name)
+            callback(
+              name=self.name,
+              reason="Alarm timer expired.",
+            )
 
     def add_observer(
       self,
       name: 'str',
-      observer: 'Callable[str, None]') -> 'None':
+      observer: 'Interruptable[str, None]') -> 'None':
         """
         Adds an interested routine to this alarm's observer list. This routine
         will be notified whenever this alarm goes from active to inactive or
@@ -343,19 +353,6 @@ class Alarm(object):
         """ Removes an interseted routine from this alarm's observer list. """
         self._observers.pop(name)
         logger.info("Observer: " + name + " removed from point " + self.name)
-
-
-    def sanity_check(self):
-        """
-        Verifies that the alarm's configuration is complete. Throws
-        AssertionErrors if the alarm is not setup properly.
-
-        """
-        assert "name" in kwargs, \
-            "Alarm defined without a name"
-
-        assert "description" in kwargs, \
-            "Alarm defined without a description!"
 
     @property
     def active(self):
@@ -386,7 +383,8 @@ class Alarm(object):
         elif value is None:
             self._writer = None
         else:
-            raise Exception("Tried to assign two writer values to " + self.description + " !")
+            raise Exception("Tried to assign two writer values to "
+              + self.description + " !")
 
     @property
     def hmi_object_name(self) -> str:
@@ -410,7 +408,7 @@ class Alarm(object):
         d= dict(
           name=self._name,
           description=self.description,
-          #_input=self._input,
+          # input=self._input,
           blocked=self.blocked,
           acknowledged=self.acknowledged,
           enabled=self.enabled,
@@ -470,9 +468,8 @@ class Alarm(object):
     def to_yaml(cls, dumper, node):
         """
         Gets a representation of this alarm suitable for storage in a yaml file.
-        YAML files are used for storing the alarm when stopping and starting then
-        process supervisor.
-
+        YAML files are used for storing the alarm when stopping and starting
+        the process supervisor.
         """
 
         return dumper.represent_mapping(
@@ -483,7 +480,6 @@ class Alarm(object):
     def from_yaml(cls, constructor, node):
         """
         Creates an alarm based upon a YAML representation of the alarm.
-
         """
         value = constructor.construct_mapping(node)
         return Alarm(**value)

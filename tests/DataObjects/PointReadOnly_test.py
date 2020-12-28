@@ -1,9 +1,10 @@
 import unittest
 import jsonpickle
-from DataObjects.PointAnalog import PointAnalog
-from DataObjects.PointEnumeration import PointEnumeration
-from DataObjects.PointDiscrete import PointDiscrete
-from DataObjects.PointReadOnly import PointReadOnly
+
+from pyAutomation.DataObjects.PointAnalog import PointAnalog
+from pyAutomation.DataObjects.PointEnumeration import PointEnumeration
+from pyAutomation.DataObjects.PointDiscrete import PointDiscrete
+from pyAutomation.DataObjects.PointReadOnly import PointReadOnly
 
 
 class TestPointReadOnly(unittest.TestCase):
@@ -33,7 +34,6 @@ class TestPointReadOnly(unittest.TestCase):
         )
         self.point_enumeration.config("system_mode")
 
-
     def test_json_pickle_analog(self):
         self.point = PointReadOnly(self.point_analog)
         pickle_text = jsonpickle.encode(self.point)
@@ -51,6 +51,7 @@ class TestPointReadOnly(unittest.TestCase):
         pickle_text = jsonpickle.encode(self.point)
         unpickled_point = jsonpickle.decode(pickle_text)
         self.assertEqual(self.point.name, unpickled_point.name)
+
 
 if __name__ == '__main__':
     unittest.main()

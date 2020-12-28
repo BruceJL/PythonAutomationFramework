@@ -13,17 +13,18 @@ class SupervisedThread(Interruptable, ABC):
     """ Class that is extended to make threads which are executed periodically
     or when point changes trigger those updates."""
 
+    sleep_time = 0                # type: 'float'
+    default_next_run_time = None  # type: 'datetime.datetime'
+    sweep_time = -1               # type: 'int'
+    last_run_time = None          # type: 'datetime.datetime'
+    terminated = False            # type 'bool'
+    _quit = False                 # type 'bool'
+
     def __init__(self, name: str, loop, period, logger: str) -> None:
         self._name = name
         self.period = period  # in microseconds
         self._logger = logging.getLogger(logger)
 
-        self.sleep_time = 0                # type: 'float'
-        self.default_next_run_time = None  # type: 'datetime.datetime'
-        self.sweep_time = -1               # type: 'int'
-        self.last_run_time = None          # type: 'datetime.datetime'
-        self.terminated = False            # type 'bool'
-        self._quit = False                 # type 'bool'
         self.condition = threading.Condition()
         self.interrupt_request_deque = deque()
         self.thread = threading.Thread(target=self.thread_loop, args=(loop,))
@@ -143,8 +144,9 @@ class SupervisedThread(Interruptable, ABC):
                       self.default_next_run_time
                       - datetime.datetime.now()).total_seconds()
 
-                # Check and see if there are interrupts queued (i.e. the routine got an
-                # interrupt whilst it was running. If so, restart the routine.
+                # Check and see if there are interrupts queued (i.e. the routine
+                # got an interrupt whilst it was running. If so, restart the
+                # routine.
                 if len(self.interrupt_request_deque) > 0:
                     self.sleep_time = 0.0
                     self.logger.debug(

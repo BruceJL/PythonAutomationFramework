@@ -1,7 +1,11 @@
 from .PointAnalogReadOnlyAbstract import PointAnalogReadOnlyAbstract
 from .PointReadOnly import PointReadOnly
+
 import logging
-from typing import Callable
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from typing import Callable, Dict
+    from .PointAbstract import PointAbstract
 
 logger = logging.getLogger('controller')
 
@@ -26,19 +30,12 @@ class PointAnalogScaled(PointAnalogReadOnlyAbstract):
               + " to PointAnalogScaled, property does not exist"
             setattr(self, kw, kwargs[kw])
 
-    def config(self, n: 'str') -> 'None':
-        logger.info("point " + n + " name assigned.")
+    def config(self) -> 'None':
         self.sanity_check()
-        self._name = n
 
     def sanity_check(self) -> None:
         assert self.point is not None, \
           "No point assigned to this PointAnalogScaled"
-
-    def _get_name(self) -> 'str':
-        return self._name
-
-    name = property(_get_name)
 
     def _get_description(self) -> 'str':
         return self.point.description
@@ -84,13 +81,8 @@ class PointAnalogScaled(PointAnalogReadOnlyAbstract):
 
     next_update = property(_get_next_update)
 
-    def _get_hmi_value(self) -> 'str':
-        return str(self.value)
-
-    hmi_value = property(_get_hmi_value)
-
     def _get_data_display_width(self) -> 'int':
-        return len(hmi_value)
+        return len(self.hmi_value)
 
     data_display_width = property(_get_data_display_width)
 
@@ -112,23 +104,21 @@ class PointAnalogScaled(PointAnalogReadOnlyAbstract):
 
     human_readable_value = property(_get_human_readable_value)
 
-    def add_observer(self, name: 'str', observer: 'Callable[str,None]') -> 'None':
+    def add_observer(
+      self,
+      name: 'str',
+      observer: 'Callable[str,None]',
+    ) -> 'None':
         self.point.add_observer(name, observer)
 
     def del_observer(self, name: 'str') -> 'None':
         self.point.del_observer(name)
 
     def get_readonly_object(self) -> 'PointAnalogReadOnlyAbstract':
-        return PointReadOnly(self)
+        return PointAnalogReadOnlyAbstract(self)
 
     def get_readwrite_object(self) -> 'PointAnalogScaled':
         return self
-
-    # Get an object suitable for storage in a yaml file.
-    def _get_yamlable_object(self) -> 'PointAbstract':
-        return self
-
-    yamlable_object = property(_get_yamlable_object)
 
     # YAML representation for configuration storage.
     def _get_yaml_dict(self) -> 'Dict[str, Any]':

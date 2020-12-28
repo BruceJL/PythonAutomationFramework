@@ -1,10 +1,10 @@
-from DataObjects.PointAnalog import PointAnalog
-from DataObjects.PointAnalogScaled import PointAnalogScaled
-
 import unittest
 import jsonpickle
 import ruamel.yaml
 from ruamel.yaml.compat import StringIO
+
+from pyAutomation.DataObjects.PointAnalog import PointAnalog
+from pyAutomation.DataObjects.PointAnalogScaled import PointAnalogScaled
 
 
 class TestPointAnalogScaled(unittest.TestCase):
@@ -17,14 +17,14 @@ class TestPointAnalogScaled(unittest.TestCase):
           hmi_writeable=True,
           update_period=1.2,
         )
-        self.pa.config("temperature_1")
+        self.pa.name = "temperature_1"
 
         self.point = PointAnalogScaled(
           scaling = 2.0,
           offset = -1.0,
           point = self.pa,
         )
-        self.point.config("test_scaled_point")
+        self.point.name = "test_scaled_point"
 
     def test_scaling(self):
         self.pa.value = 44.0

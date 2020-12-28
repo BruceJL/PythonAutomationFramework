@@ -1,5 +1,10 @@
 from abc import ABC
 from pyAutomation.DataObjects.Point import Point
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Dict
+
 
 class PointHandler(ABC):
     """This class is inherited by any class that expected to get assigned
@@ -21,7 +26,7 @@ class PointHandler(ABC):
         if 'access' in  self._points_list[name]:
             return self._points_list[name]['access']
 
-        return None
+        assert False, (f'No valid r/w property assigned to point: {name}')
 
     def get_point_type(self, name: 'str') -> 'str':
         assert self.point_name_valid(name), \
@@ -31,8 +36,8 @@ class PointHandler(ABC):
 
     def add_point(
       self,
-      name: 'str', 
-      point: 'Point', 
+      name: 'str',
+      point: 'Point',
       access: 'str',
       extra_data: 'Dict[str, str]',
     ) -> None:

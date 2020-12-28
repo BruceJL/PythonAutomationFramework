@@ -1,13 +1,13 @@
-from .PointReadOnlyAbstract import PointReadOnlyAbstract
-from .PointAbstract import PointAbstract
+from .PointAnalogReadOnlyAbstract import PointAnalogReadOnlyAbstract
+from .PointAnalog import PointAnalog
 from pyAutomation.Supervisory.Interruptable import Interruptable
 from typing import Dict, Any
 from datetime import datetime
 
 
-class PointReadOnly(PointReadOnlyAbstract):
+class PointAnalogReadOnly(PointAnalogReadOnlyAbstract):
 
-    def __init__(self, point: PointReadOnlyAbstract) -> None:
+    def __init__(self, point: 'PointAnalog') -> None:
         self._point = point
 
     def __getstate__(self) -> 'Dict[str, Any]':
@@ -76,6 +76,15 @@ class PointReadOnly(PointReadOnlyAbstract):
 
     last_update = property(_get_last_update)
 
+    def _get_u_of_m(self) -> 'str':
+        pass
+
+    def _get_request_value(self) -> 'str':
+        return self._point.request_value
+
+    def _set_request_value(self, value) -> 'None':
+        self._point.request_value = value
+
     # point observers
     def add_observer(
       self,
@@ -92,11 +101,11 @@ class PointReadOnly(PointReadOnlyAbstract):
         return self._point.hmi_object_name
 
     # Return a pointer to a read only instance of this object
-    def get_readonly_object(self) -> 'PointReadOnlyAbstract':
+    def get_readonly_object(self) -> 'PointAnalogReadOnly':
         return self
 
     # Return a pointer to a read/write instance of this object.
-    def get_readwrite_object(self) -> 'PointAbstract':
+    def get_readwrite_object(self) -> 'PointAnalog':
         return self._point.get_readwrite_object()
 
     @property

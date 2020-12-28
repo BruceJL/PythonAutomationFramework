@@ -1,4 +1,6 @@
 from abc import abstractmethod, ABC
+from typing import Any
+
 
 class Interruptable(ABC):
 

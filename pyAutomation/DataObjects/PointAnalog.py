@@ -1,6 +1,7 @@
-from pyAutomation.DataObjects.PointReadOnly import PointReadOnly
-from pyAutomation.DataObjects.PointAnalogReadOnlyAbstract import PointAnalogReadOnlyAbstract
+from .PointAnalogReadOnly import PointAnalogReadOnly
+from .PointAnalogReadOnlyAbstract import PointAnalogReadOnlyAbstract
 from pyAutomation.DataObjects.Point import Point
+from typing import Dict, List, Any
 
 
 class PointAnalog(Point, PointAnalogReadOnlyAbstract):
@@ -8,14 +9,15 @@ class PointAnalog(Point, PointAnalogReadOnlyAbstract):
     PointAnalogs can be quantized or continous. """
     yaml_tag = u'!PointAnalog'
 
+    _u_of_m = None  # type: 'str'
+    _value = 0.0  # type: 'float'
+
     def _get_keywords(self) -> 'List[str]':
         return super()._get_keywords() + ['u_of_m']
 
     keywords = property(_get_keywords)
 
     def __init__(self, **kwargs: object) -> 'None':
-        self._u_of_m = None  # type: 'str'
-        self._value = 0.0  # type: 'float'
         super().__init__(**kwargs)
 
     # human readable value
@@ -46,8 +48,7 @@ class PointAnalog(Point, PointAnalogReadOnlyAbstract):
     hmi_value = property(_get_hmi_value, _set_hmi_value)
 
     # HMI window type
-    @property
-    def hmi_object_name(self) -> 'str':
+    def _get_hmi_object_name(self) -> 'str':
         return "PointAnalogWindow"
 
     def _get_u_of_m(self) -> 'str':
@@ -58,8 +59,8 @@ class PointAnalog(Point, PointAnalogReadOnlyAbstract):
 
     u_of_m = property(_get_u_of_m, _set_u_of_m)
 
-    def get_readonly_object(self) -> 'PointAnalogReadOnlyAbstract':
-        return PointReadOnly(self)
+    def get_readonly_object(self) -> 'PointAnalogReadOnly':
+        return PointAnalogReadOnly(self)
 
     def get_readwrite_object(self) -> 'PointAnalog':
         return self

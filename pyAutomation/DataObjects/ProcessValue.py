@@ -26,14 +26,15 @@ class ProcessValue(PointAnalogReadOnlyAbstract):
         for key in self.alarms:
             self.alarms[key].evaluate_analog(self._point.value)
 
+    _point = None  # type: PointAnalogReadOnlyAbstract
+    _point_rw = None  # type: PointAnalog
+    _name = None  # type: str
+
     def __init__(self, point_analog: 'PointAnalogReadOnlyAbstract') -> 'None':
 
         self.control_points = {}  # type: 'Dict[str, PointAbstract]'
         self.alarms = {}  # type: 'Dict[str, AlarmAnalog]'
         self.related_points = {}  # type: 'Dict[str, PointAbstract]'
-        self._point = None
-        self._point_rw = None
-        self._name = None
 
         self.high_display_limit = 0.0
         self.low_display_limit = 0.0
@@ -51,8 +52,7 @@ class ProcessValue(PointAnalogReadOnlyAbstract):
         # and discard it after the name is set.
         self._point_rw = point_analog
 
-    def config(self, n: 'str') -> 'None':
-        self._name = n
+    def config(self,) -> 'None':
         self._point_rw.config(n)
 
         for key, value in self.control_points.items():
@@ -210,7 +210,7 @@ class ProcessValue(PointAnalogReadOnlyAbstract):
                 rps[k] = self.related_points[k]
 
         d = {
-          'point': self._point.yamlable_object,
+          'point': self._point,
           'high_display_limit': self.high_display_limit,
           'low_display_limit': self.low_display_limit,
           'control_points': cps,

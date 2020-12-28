@@ -9,10 +9,9 @@ import inspect
 import threading
 from importlib import import_module
 from rpyc.utils.server import ThreadedServer
-from typing import List, Dict
+from typing import List
 import ruamel
 
-import pyAutomation
 from pyAutomation.DataObjects.Alarm import Alarm
 from pyAutomation.Supervisory.AlarmHandler import AlarmHandler
 from pyAutomation.Supervisory.SupervisedThread import SupervisedThread
@@ -73,7 +72,7 @@ class Supervisor(object):
         # load the point database(s).
         for file in point_database_yaml_files:
             self.logger.info("loading file: %s", file)
-            PointManager().load_points(file)
+            PointManager().load_points_from_yaml_file(file)
 
         # Setup the alarm notifiers.
         section = "AlarmNotifiers"
@@ -129,11 +128,11 @@ class Supervisor(object):
             self.logger.info(
               "attempting to import {}".format(
                 cfg[section][thread_name]["module"]))
-            
+
             imported_module = import_module(
               cfg[section][thread_name]["module"],
               cfg[section][thread_name]["package"])
-            
+
             for i in dir(imported_module):
                 attribute = getattr(imported_module, i)
 
