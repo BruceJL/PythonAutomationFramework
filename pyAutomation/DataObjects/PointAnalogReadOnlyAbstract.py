@@ -24,12 +24,10 @@ valid_data_types = [
 class PointAnalogReadOnlyAbstract(PointReadOnlyAbstract, ABC):
     """ Abstract implementation of a read-only analog point """
 
-    # unit of measure
+    @property
     @abstractmethod
-    def _get_u_of_m(self) -> str:
+    def u_of_m(self) -> 'str':
         pass
-
-    u_of_m = property(_get_u_of_m)
 
     @staticmethod
     def datatype_length_bytes(data_type: 'str') -> 'int':

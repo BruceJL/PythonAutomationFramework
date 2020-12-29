@@ -66,10 +66,9 @@ class PointAnalogDual(
             self._quality = False
 
     # get the engineering units value
-    def _get_value(self):
+    @property
+    def value(self):
         return self._value
-
-    value = property(_get_value)
 
     # human readable value
     @property
@@ -87,64 +86,59 @@ class PointAnalogDual(
         # TODO make a PointAnalogDualWindow
         return "PointAnalogDualWindow"
 
-    def _get_forced(self) -> bool:
+    @property
+    def forced(self) -> bool:
         return self._point_1.forced or self._point_2.forced
 
-    forced = property(_get_forced)
-
-    def _get_hmi_value(self) -> str:
+    @property
+    def hmi_value(self) -> str:
         return str(self.value)
 
-    hmi_value = property(_get_hmi_value)
-
-    def _get_last_update(self) -> datetime:
+    @property
+    def last_update(self) -> 'datetime':
         return self._last_update
 
-    last_update = property(_get_last_update)
+    @property
+    def next_update(self) -> 'datetime':
+        if self._point_1.next_update > self._point_2.next_update:
+            return self._point_2.next_update
+        else:
+            return self._point_1.next_update
 
-    def _get_quality(self):
+    @property
+    def readonly(self) -> 'bool':
+        return True
+
+    @property
+    def quality(self):
         return self._quality
 
-    quality = property(_get_quality)
-
-    def add_observer(
-      self,
-      name: 'str',
-      observer: 'Interruptable',
-    ) -> 'None':
-        self._observers.update({name: observer})
-
-    def del_observer(self, name: 'str') -> 'None':
-        self._observers.pop(name)
-
     # Unit of measure
-    def _get_u_of_m(self) -> str:
+    @property
+    def u_of_m(self) -> str:
         return self._point_1.u_of_m
 
-    u_of_m = property(_get_u_of_m)
-
     # Description
-    def _get_description(self) -> str:
+    @property
+    def description(self) -> str:
         return self._description
 
-    description = property(_get_description)
-
     # name
-    def _get_name(self):
+    @property
+    def name(self):
         return self._name
 
-    name = property(_get_name)
-
     # Writer
-    def _get_writer(self) -> object:
+    @property
+    def writer(self) -> object:
         return None
 
-    writer = property(_get_writer)
-
-    def get_readonly_object(self) -> 'PointAnalogReadOnlyAbstract':
+    @property
+    def readonly_object(self) -> 'PointAnalogReadOnlyAbstract':
         return self
 
-    def get_readwrite_object(self) -> 'PointAnalogDual':
+    @property
+    def readwrite_object(self) -> 'PointAnalogDual':
         assert False, "Cannot get a writable object from a PointAnalogDual"
 
     # The dict property is what is used by jsonpickle to transport the object
@@ -171,7 +165,8 @@ class PointAnalogDual(
         self._point_2     = d['point_2']
 
     # YAML representation for configuration storage.
-    def _get_yaml_dict(self) -> 'Dict[str, Any]':
+    @property
+    def yaml_dict(self) -> 'Dict[str, Any]':
         d = {
           'point_1': self._point_1,
           'point_2': self._point_2,
@@ -184,13 +179,13 @@ class PointAnalogDual(
     def to_yaml(cls, dumper, node):
         return dumper.represent_mapping(
           u'!PointAnalogDual',
-          node._get_yaml_dict())
+          node.yaml_dict)
 
     @classmethod
     def from_yaml(cls, constructor, node):
         value = constructor.construct_mapping(node, deep=True)
 
-        p =  PointAnalogDual(
+        p = PointAnalogDual(
           description = value['description'],
           point_1     = value['point_1'],
           point_2     = value['point_2'],

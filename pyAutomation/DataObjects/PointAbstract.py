@@ -1,4 +1,4 @@
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
 from typing import Dict, List, Any
 from datetime import datetime, timedelta
 import logging
@@ -64,8 +64,7 @@ class PointAbstract(PointReadOnlyAbstract, ABC):
       'update_period'
     ]
 
-    def __init__(self, **kwargs: 'str') -> 'None':
-
+    def configure_parameters(self, **kwargs: 'str') -> 'None':
         if 'update_period' in kwargs:
             s = kwargs['update_period']
             if s is not None:
@@ -82,24 +81,29 @@ class PointAbstract(PointReadOnlyAbstract, ABC):
                 + ", property does not exist"
 
             setattr(self, kw, kwargs[kw])
-            logger.info("assinging property of %s to %s", kwargs[kw], kw)
+            logger.debug("assinging property of %s to %s", kwargs[kw], kw)
 
-        logger.info("point '%s'  created.", self.description)
+        logger.debug("point '%s'  created.", self.description)
 
     # object configuration keywords.
-    def _get_keywords(self) -> List[str]:
+    @property
+    @abstractmethod
+    def keywords(self) -> List[str]:
         return self._keywords
 
-    keywords = property(_get_keywords)
+    def config(self):
+        pass
 
     # value
-    def _get_value(self) -> object:
+    @property
+    def value(self) -> object:
         if self._quality:
             return self._value
         else:
             return 0
 
-    def _set_value(self, v):
+    @value.setter
+    def value(self, v):
         if not self.forced:
             self._quality = True
             self.last_update = datetime.now()
@@ -138,13 +142,13 @@ class PointAbstract(PointReadOnlyAbstract, ABC):
             except AttributeError:
                 self._value = v
 
-    value = property(_get_value, _set_value)
-
     # Get and set the owner process
-    def _get_writer(self):
+    @property
+    def writer(self):
         return self._writer
 
-    def _set_writer(self, w):
+    @writer.setter
+    def writer(self, w):
         assert w is not None,\
            "Tried to assign a null writer to " + self.description
 
@@ -155,13 +159,10 @@ class PointAbstract(PointReadOnlyAbstract, ABC):
 
         self._writer = w
 
-    writer = property(_get_writer, _set_writer)
-
     # Get the read/write property of this point.
-    def _get_readonly(self) -> 'bool':
+    @property
+    def readonly(self) -> 'bool':
         return False
-
-    readonly = property(_get_readonly)
 
     # The Hmi is allowed to edit the point
     @property
@@ -169,7 +170,8 @@ class PointAbstract(PointReadOnlyAbstract, ABC):
         return self.hmi_requestable or self.forced
 
     # The time that the point should be updated next.
-    def _get_next_update(self) -> datetime:
+    @property
+    def next_update(self) -> datetime:
         try:
             if self.update_period is not None:
                 return self._next_update
@@ -178,36 +180,26 @@ class PointAbstract(PointReadOnlyAbstract, ABC):
         except AttributeError:
             return datetime.max
 
-    def _set_next_update(self, nu) -> None:
+    @next_update.setter
+    def next_update(self, nu) -> None:
         self._next_update = nu
 
-    next_update = property(
-        fget=_get_next_update,
-        fset=_set_next_update,
-    )
-
-    #  description
-    def _get_description(self) -> str:
+    # description
+    @property
+    def description(self) -> str:
         return self._description
 
-    def _set_description(self, d: str) -> None:
+    @description.setter
+    def description(self, d: str) -> None:
         self._description = d
 
-    description = property(_get_description, _set_description)
-
-    # Human readable value for HMI usage.
-    @property
-    def human_readable_value(self) -> 'str':
-        if self._value is not None:
-            return str(self._value)
-        else:
-            return "***"
-
     #  forced
-    def _get_forced(self) -> bool:
+    @property
+    def forced(self) -> bool:
         return self._forced
 
-    def _set_forced(self, value: bool) -> None:
+    @forced.setter
+    def forced(self, value: bool) -> None:
         if not hasattr(self, "_forced"):
             self._forced = value
             self._last_update = datetime.now()
@@ -222,53 +214,53 @@ class PointAbstract(PointReadOnlyAbstract, ABC):
                   reason = self,
                 )
 
-    forced = property(_get_forced, _set_forced)
-
     # last update
-    def _get_last_update(self) -> datetime:
+    @property
+    def last_update(self) -> datetime:
         try:
             return self._last_update
         except AttributeError:
             self._last_update = datetime.now()
             return self._last_update
 
-    def _set_last_update(self, d: datetime):
+    @last_update.setter
+    def last_update(self, d: datetime):
         self._last_update = d
 
-    last_update = property(_get_last_update, _set_last_update)
-
     # name
-    def _get_name(self) -> 'str':
+    @property
+    def name(self) -> 'str':
         assert self._name is not None, \
           "name is not populated for '" + self.description + "'."
         return self._name
 
-    def _set_name(self, name: 'str') -> 'None':
-        assert name is None, ("Cannot reassign name of already named point: "
-        + f"{self._name}")
+    @name.setter
+    def name(self, name: 'str') -> 'None':
+        assert name is not None, (
+            f"Cannot reassign name of already named point: {self._name}")
         self._name = name
 
-    name = property(_get_name, _set_name)
-
     # Used to access point quality.
-    def _get_quality(self) -> bool:
+    @property
+    def quality(self) -> bool:
         return self._quality
 
-    def _set_quality(self, value) -> 'None':
+    @quality.setter
+    def quality(self, value) -> 'None':
         if not self._forced and self._quality != value:
             self._quality = value
             self._last_update = datetime.now()
 
-    quality = property(_get_quality, _set_quality)
-
     # Get and set the requested value from non-owner processes.
-    def _get_request_value(self):
+    @property
+    def request_value(self):
         assert self.requestable,\
           "Logic tried to read the request value of " \
           + self.description + " which does not support requests."
         return self._request_value
 
-    def _set_request_value(self, value):
+    @request_value.setter
+    def request_value(self, value):
         assert self.requestable,\
           "Logic tried to write the request value of " \
           + self.description + " which does not support requests."
@@ -282,23 +274,17 @@ class PointAbstract(PointReadOnlyAbstract, ABC):
               reason=self,
             )
 
-    request_value = property(_get_request_value, _set_request_value)
-
     @property
     def editable_value(self) -> 'str':
         return str(self._value)
 
-    # Get data display width for HMI usage
-    @property
-    @abstractmethod
-    def data_display_width(self) -> 'int':
-        pass
-
     # HMI values
-    def _get_hmi_value(self) -> str:
+    @property
+    def hmi_value(self) -> 'str':
         return self.value
 
-    def _set_hmi_value(self, value: str):
+    @hmi_value.setter
+    def hmi_value(self, value: 'str'):
         # Note that the behaviour changes depending upon if the point is
         # forced or not. A forced point is written directly to, an unforced
         # point has a entry made in the request field.
@@ -333,10 +319,6 @@ class PointAbstract(PointReadOnlyAbstract, ABC):
                 "HMI tried to write to: " + self.description \
                 + " but it's not forced, hmi_writeable, or requestable"
 
-    # hmi_value is access by the sub classes, so we cannot use the property
-    # decorator
-    hmi_value = property(_get_hmi_value, _set_hmi_value)
-
     # values for live object data for transport over JSON.
     def __getstate__(self) -> 'Dict[str, Any]':
         return dict(
@@ -362,7 +344,8 @@ class PointAbstract(PointReadOnlyAbstract, ABC):
         self._quality = d['quality']
 
     # used to produce a yaml representation for config storage.
-    def _get_yaml_dict(self) -> 'Dict[str, Any]':
+    @property
+    def yaml_dict(self) -> 'Dict[str, Any]':
 
         if self.update_period is not None:
             s = self.update_period.total_seconds()

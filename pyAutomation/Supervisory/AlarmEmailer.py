@@ -67,7 +67,8 @@ class AlarmEmailer(AlarmNotifier):
             logger.error("Error: unable to send email: " + str(message))
 
     # YAML representation for configuration storage.
-    def _get_yaml_dict(self) -> 'Dict[str, Any]':
+    @property
+    def yaml_dict(self) -> 'Dict[str, Any]':
         d = {
           'name': self.name,
           'logger': self.logger.name,
@@ -86,7 +87,7 @@ class AlarmEmailer(AlarmNotifier):
     def to_yaml(cls, dumper, node):
         return dumper.represent_mapping(
           u'!AlarmEmailer',
-          node._get_yaml_dict())
+          node.yaml_dict
 
     @classmethod
     def from_yaml(cls, constructor, node):

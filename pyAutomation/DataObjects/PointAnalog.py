@@ -1,24 +1,31 @@
 from .PointAnalogReadOnly import PointAnalogReadOnly
-from .PointAnalogReadOnlyAbstract import PointAnalogReadOnlyAbstract
-from pyAutomation.DataObjects.Point import Point
+from .PointAnalogAbstract import PointAnalogAbstract
 from typing import Dict, List, Any
 
 
-class PointAnalog(Point, PointAnalogReadOnlyAbstract):
+class PointAnalog(PointAnalogAbstract):
     """ Concrete implementation of an Analog point. Stores values as floats.
-    PointAnalogs can be quantized or continous. """
+    PointAnalogs can be quantized or continous.
+    """
+
     yaml_tag = u'!PointAnalog'
 
-    _u_of_m = None  # type: 'str'
     _value = 0.0  # type: 'float'
 
-    def _get_keywords(self) -> 'List[str]':
-        return super()._get_keywords() + ['u_of_m']
+    def __init__(self, **kwargs: 'str') -> 'None':
+        super().configure_parameters(**kwargs)
 
-    keywords = property(_get_keywords)
+    @property
+    def u_of_m(self) -> 'str':
+        return self._u_of_m
 
-    def __init__(self, **kwargs: object) -> 'None':
-        super().__init__(**kwargs)
+    @u_of_m.setter
+    def u_of_m(self, value) -> 'None':
+        self._u_of_m = value
+
+    @property
+    def keywords(self) -> 'List[str]':
+        return super().keywords + ['u_of_m']
 
     # human readable value
     @property
@@ -40,29 +47,23 @@ class PointAnalog(Point, PointAnalogReadOnlyAbstract):
         return len(self.human_readable_value)
 
     def _set_hmi_value(self, v: 'str'):
-        super()._set_hmi_value(float(v))
+        super()._set_hmi_value(v)
 
     def _get_hmi_value(self):
         return super()._get_hmi_value()
 
-    hmi_value = property(_get_hmi_value, _set_hmi_value)
-
     # HMI window type
-    def _get_hmi_object_name(self) -> 'str':
+    @property
+    def hmi_object_name(self) -> 'str':
         return "PointAnalogWindow"
 
-    def _get_u_of_m(self) -> 'str':
-        return self._u_of_m
-
-    def _set_u_of_m(self, s):
-        self._u_of_m = s
-
-    u_of_m = property(_get_u_of_m, _set_u_of_m)
-
-    def get_readonly_object(self) -> 'PointAnalogReadOnly':
+    # Return readonly and read/write copies of this object.
+    @property
+    def readonly_object(self) -> 'PointAnalogReadOnly':
         return PointAnalogReadOnly(self)
 
-    def get_readwrite_object(self) -> 'PointAnalog':
+    @property
+    def readwrite_object(self) -> 'PointAnalog':
         return self
 
     # values for live object data for transport over JSON.
@@ -76,8 +77,9 @@ class PointAnalog(Point, PointAnalogReadOnlyAbstract):
         self._u_of_m = d['u_of_m']
 
     # YAML representation for configuration storage.
-    def _get_yaml_dict(self) -> 'Dict[str, Any]':
-        d = super()._get_yaml_dict()
+    @property
+    def yaml_dict(self) -> 'Dict[str, Any]':
+        d = super().yaml_dict
         d.update({'u_of_m': self.u_of_m})
         return d
 
@@ -86,7 +88,7 @@ class PointAnalog(Point, PointAnalogReadOnlyAbstract):
     def to_yaml(cls, dumper, node):
         return dumper.represent_mapping(
           u'!PointAnalog',
-          node._get_yaml_dict())
+          node.yaml_dict)
 
     @classmethod
     def from_yaml(cls, constructor, node):

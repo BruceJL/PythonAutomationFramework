@@ -1,41 +1,41 @@
 import logging
+from typing import TYPE_CHECKING
+from .PointAbstract import PointAbstract
 
-from .Point import Point
-from .PointReadOnlyAbstract import PointReadOnlyAbstract
-from .PointReadOnly import PointReadOnly
-from typing import List, Dict, Any
-from ruamel import yaml
+if TYPE_CHECKING:
+    from .PointReadOnly import PointReadOnly
+    from typing import List, Dict, Any
 
 logger = logging.getLogger('controller')
 
 
-class PointDiscrete(Point):
+class PointDiscrete(PointAbstract):
     yaml_tag = u'!PointDiscrete'
-
-    def _get_keywords(self) -> 'List[str]':
-        return super()._get_keywords() + ['on_state_description', 'off_state_description']
-
-    keywords = property(_get_keywords)
 
     def __init__(self, **kwargs):
         self.on_state_description = "ON"
         self.off_state_description = "OFF"
-        super().__init__(**kwargs)
+        super().configure_parameters(**kwargs)
+
+    @property
+    def keywords(self) -> 'List[str]':
+        return super().keywords + \
+          ['on_state_description', 'off_state_description']
 
     # value accessed through HMI
-    def _get_hmi_value(self) -> str:
+    @property
+    def hmi_value(self) -> 'str':
         return super()._get_hmi_value()
 
-    def _set_hmi_value(self, v: str):
+    @hmi_value.setter
+    def hmi_value(self, v: 'str'):
         if not isinstance(v, str):
             raise ValueError('Supply argument %s is not a string' % v)
-        if v == "True":
-            x = True
-        else:
-            x = False
-        super()._set_hmi_value(x)
-
-    hmi_value = property(_get_hmi_value, _set_hmi_value)
+        # if v == "True":
+        #     x = True
+        # else:
+        #     x = False
+        super()._set_hmi_value(v)
 
     # human readable value
     @property
@@ -56,13 +56,15 @@ class PointDiscrete(Point):
 
     # HMI window type
     @property
-    def hmi_object_name(self) -> str:
+    def hmi_object_name(self) -> 'str':
         return "PointDiscreteWindow"
 
-    def get_readonly_object(self) -> 'PointReadOnlyAbstract':
+    @property
+    def readonly_object(self) -> 'PointReadOnly':
         return PointReadOnly(self)
 
-    def get_readwrite_object(self) -> 'PointDiscrete':
+    @property
+    def readwrite_object(self) -> 'PointDiscrete':
         return self
 
     # values for live object data for transport over JSON.
@@ -79,8 +81,9 @@ class PointDiscrete(Point):
         self.on_state_description = d['on_state_description']
         self.off_state_description = d['off_state_description']
 
-    def _get_yaml_dict(self) -> 'Dict[str, Any]':
-        d = super()._get_yaml_dict()
+    @property
+    def yaml_dict(self) -> 'Dict[str, Any]':
+        d = super().yaml_dict
         d.update({
           'on_state_description': self.on_state_description,
           'off_state_description': self.off_state_description,
@@ -92,7 +95,7 @@ class PointDiscrete(Point):
     def to_yaml(cls, dumper, node):
         return dumper.represent_mapping(
           u'!PointDiscrete',
-          node._get_yaml_dict())
+          node.yaml_dict)
 
     @classmethod
     def from_yaml(cls, constructor, node):

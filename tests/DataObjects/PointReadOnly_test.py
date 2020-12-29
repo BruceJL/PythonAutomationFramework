@@ -19,7 +19,7 @@ class TestPointReadOnly(unittest.TestCase):
           update_period = 1.0,
         )
 
-        self.point_analog.config("temp_1")
+        self.point_analog.name = "temp_1"
 
         self.point_discrete= PointDiscrete(
           description="run cooling",

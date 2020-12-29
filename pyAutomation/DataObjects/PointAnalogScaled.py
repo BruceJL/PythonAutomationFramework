@@ -1,21 +1,21 @@
+from .PointAnalogReadOnly import PointAnalogReadOnly
 from .PointAnalogReadOnlyAbstract import PointAnalogReadOnlyAbstract
-from .PointReadOnly import PointReadOnly
+from .PointAnalogAbstract import PointAnalogAbstract
 
 import logging
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from typing import Callable, Dict
-    from .PointAbstract import PointAbstract
+    from typing import Dict, Any, List
 
 logger = logging.getLogger('controller')
 
 
-class PointAnalogScaled(PointAnalogReadOnlyAbstract):
-    keywords = [
+class PointAnalogScaled(PointAnalogAbstract):
+    _keywords = [
       'scaling',
       'offset',
       'point',
-    ]
+    ]  # type: List[str]
 
     def __init__(self, **kwargs):
         self.scaling = 1.0
@@ -53,20 +53,11 @@ class PointAnalogScaled(PointAnalogReadOnlyAbstract):
     def _set_quality(self, q: 'bool') -> 'None':
         self.point.quality = q
 
-    quality = property(_get_quality, _set_quality)
-
-    def _get_u_of_m(self) -> 'str':
-        return self.point.u_of_m
-
-    u_of_m = property(_get_u_of_m)
-
     def _get_value(self) -> 'float':
         return (self.point.value - self.offset) / self.scaling
 
     def _set_value(self, value: float) -> 'None':
         self.point.value = value * self.scaling + self.offset
-
-    value = property(_get_value, _set_value)
 
     def _get_writer(self):
         return self.point.writer
@@ -84,15 +75,10 @@ class PointAnalogScaled(PointAnalogReadOnlyAbstract):
     def _get_data_display_width(self) -> 'int':
         return len(self.hmi_value)
 
-    data_display_width = property(_get_data_display_width)
-
     def _get_last_update(self):
         return self.point.last_update
 
     last_update = property(_get_last_update)
-
-    def hmi_object_name(self) -> 'str':
-        return "PointAnalogScaledWindow"
 
     def _get_hmi_value(self) -> 'str':
         return self.hmi_value
@@ -102,26 +88,21 @@ class PointAnalogScaled(PointAnalogReadOnlyAbstract):
     def _get_human_readable_value(self) -> 'str':
         return self.hmi_value
 
-    human_readable_value = property(_get_human_readable_value)
+    @property
+    def readonly_object(self) -> 'PointAnalogReadOnlyAbstract':
+        return PointAnalogReadOnly(self)
 
-    def add_observer(
-      self,
-      name: 'str',
-      observer: 'Callable[str,None]',
-    ) -> 'None':
-        self.point.add_observer(name, observer)
-
-    def del_observer(self, name: 'str') -> 'None':
-        self.point.del_observer(name)
-
-    def get_readonly_object(self) -> 'PointAnalogReadOnlyAbstract':
-        return PointAnalogReadOnlyAbstract(self)
-
-    def get_readwrite_object(self) -> 'PointAnalogScaled':
+    @property
+    def readwrite_object(self) -> 'PointAnalogScaled':
         return self
 
+    # HMI object name
+    def _get_hmi_object_name(self) -> 'str':
+        return "PointAnalogWindow"
+
     # YAML representation for configuration storage.
-    def _get_yaml_dict(self) -> 'Dict[str, Any]':
+    @property
+    def yaml_dict(self) -> 'Dict[str, Any]':
         d = dict(
           point=self.point,
           scaling=self.scaling,
@@ -134,7 +115,7 @@ class PointAnalogScaled(PointAnalogReadOnlyAbstract):
     def to_yaml(cls, dumper, node):
         return dumper.represent_mapping(
           u'!PointAnalogScaled',
-          node._get_yaml_dict())
+          node.yaml_dict)
 
     @classmethod
     def from_yaml(cls, constructor, node):

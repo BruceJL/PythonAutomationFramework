@@ -2,13 +2,12 @@ import logging
 from typing import TYPE_CHECKING
 from ruamel import yaml
 
-from pyAutomation.DataObjects.PointAnalogReadOnlyAbstract \
-    import PointAnalogReadOnlyAbstract
+from .PointAnalogReadOnlyAbstract import PointAnalogReadOnlyAbstract
 
 if TYPE_CHECKING:
-    from pyAutomation.DataObjects.PointAbstract import PointAbstract
-    from pyAutomation.DataObjects.AlarmAnalog import AlarmAnalog
-    from pyAutomation.DataObjects.PointAnalog import PointAnalog
+    from .PointAbstract import PointAbstract
+    from .AlarmAnalog import AlarmAnalog
+    from .PointAnalog import PointAnalog
     from typing import Dict, Any, Callable
 
 logger = logging.getLogger('controller')
@@ -44,7 +43,7 @@ class ProcessValue(PointAnalogReadOnlyAbstract):
         assert point_analog is not None,\
             "ProcessValue instanciated with null point."
 
-        self._point = point_analog.get_readonly_object()
+        self._point = point_analog.readonly_object
         point_analog.add_observer("ProcessValue", self.point_updated)
 
         # In order to setup the name of the analog point, we need to
@@ -52,8 +51,8 @@ class ProcessValue(PointAnalogReadOnlyAbstract):
         # and discard it after the name is set.
         self._point_rw = point_analog
 
-    def config(self,) -> 'None':
-        self._point_rw.config(n)
+    def config(self) -> 'None':
+        self._point_rw.config()
 
         for key, value in self.control_points.items():
             value.config(n + ".control_points." + key)
@@ -78,46 +77,38 @@ class ProcessValue(PointAnalogReadOnlyAbstract):
     # Below are properties proxied from the wrapped PointAnalog.
 
     # point name
-    def _get_name(self) -> str:
+    @property
+    def name(self) -> str:
         return self._point.name
 
-    name = property(_get_name)
-
     # Point EU value
-    def _get_value(self):
+    @property
+    def value(self):
         return self._point.value
 
-    value = property(_get_value)
-
     # point HMI value
-    def _get_hmi_value(self):
+    @property
+    def hmi_value(self):
         return self._point.hmi_value
 
-    def _set_hmi_value(self, v):
+    @hmi_value.setter
+    def hmi_value(self, v):
         self._point.hmi_value = v
 
-    hmi_value = property(_get_hmi_value, _set_hmi_value)
-
     # Point quaity
-    def _get_quality(self) -> bool:
+    @property
+    def quality(self) -> 'bool':
         return self._point.quality
 
-    quality = property(_get_quality)
-
     # Point forced
-    def _get_forced(self) -> bool:
+    @property
+    def forced(self) -> 'bool':
         return self._point.forced
 
-    # def _set_forced(self, forced: bool):
-    #     self._point.forced = forced
-
-    forced = property(_get_forced)
-
     # Description
-    def _get_description(self) -> str:
+    @property
+    def description(self) -> str:
         return self._point.description
-
-    description = property(_get_description)
 
     # human readable value
     @property
@@ -125,10 +116,25 @@ class ProcessValue(PointAnalogReadOnlyAbstract):
         return self._point.human_readable_value
 
     # last update property
-    def _get_last_update(self):
+    @property
+    def last_update(self):
         return self._point.last_update
 
-    last_update = property(_get_last_update)
+    @property
+    def next_update(self):
+        return self._point.next_update
+
+    @property
+    def readonly(self):
+        return True
+
+    @property
+    def request_value(self) -> 'str':
+        return self._point.request_value
+
+    @request_value.setter
+    def request_value(self, value: 'str') -> 'None':
+        self._point.request_value = value
 
     # HMI writable
     @property
@@ -140,37 +146,27 @@ class ProcessValue(PointAnalogReadOnlyAbstract):
     def data_display_width(self) -> int:
         return self._point.data_display_width
 
-    # point observers
-    def add_observer(
-      self,
-      name: 'str',
-      observer: 'Callable[str, None]') -> 'None':
-        self._point.add_observer(name, observer)
-
-    def del_observer(self, name: 'str') -> 'None':
-        self._point.del_observer(name)
-
     @property
     def hmi_object_name(self) -> str:
         return "ProcessValueWindow"
 
     # writer
-    def _get_writer(self) -> object:
+    @property
+    def writer(self) -> object:
         return self._point.writer
 
-    writer = property(_get_writer)
-
     # unit of measure
-    def _get_u_of_m(self) -> str:
+    @property
+    def u_of_m(self) -> str:
         return self._point.u_of_m
 
-    u_of_m = property(_get_u_of_m)
-
-    def get_readonly_object(self) -> 'PointAnalogReadOnlyAbstract':
+    @property
+    def readonly_object(self) -> 'PointAnalogReadOnlyAbstract':
         return self
 
-    def get_readwrite_object(self) -> 'PointAnalog':
-        return self._point.get_readwrite_object()
+    @property
+    def readwrite_object(self) -> 'PointAnalog':
+        return self._point.readwrite_object
 
     # values for live object data for transport over JSON.
     def __getstate__(self) -> 'Dict[str, Any]':
@@ -193,7 +189,8 @@ class ProcessValue(PointAnalogReadOnlyAbstract):
         self.related_points = d['related_points']
 
     # yaml dumping function
-    def _get_yaml_dict(self) -> 'Dict[str, Any]':
+    @property
+    def yaml_dict(self) -> 'Dict[str, Any]':
         cps = {}
         if self.control_points is not None:
             for k in self.control_points:
@@ -224,7 +221,7 @@ class ProcessValue(PointAnalogReadOnlyAbstract):
     def to_yaml(cls, dumper, node):
         return dumper.represent_mapping(
           u'!ProcessValue',
-          node._get_yaml_dict())
+          node.yaml_dict)
 
     @classmethod
     def from_yaml(cls, constructor, node):

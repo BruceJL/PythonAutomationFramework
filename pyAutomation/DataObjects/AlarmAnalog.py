@@ -9,8 +9,8 @@ class AlarmAnalog(Alarm):
     """
     Represents an analog alarm object, it extends an alarm object but instead
     take an analog value and compares it to a theshold to drive the alarm state.
-
     """
+
     keywords = Alarm.keywords + [
         "alarm_value",
         "hysteresis",
@@ -76,13 +76,14 @@ class AlarmAnalog(Alarm):
         self.hysteresis     = d['hysteresis']
         self.high_low_limit = d['high_low_limit']
 
-    def _get_yaml_dict(self) -> 'Dict[str, Any]':
+    @property
+    def yaml_dict(self) -> 'Dict[str, Any]':
         """
         Gets a representation of this alarm suitable for storage in a yaml file.
         YAML files are used for storing the alarm when stopping and starting
         the process supervisor.
         """
-        d = super()._get_yaml_dict()
+        d = super().yaml_dict
         d.update(dict(
           alarm_value=self.alarm_value,
           hysteresis=self.hysteresis,
@@ -124,7 +125,7 @@ class AlarmAnalog(Alarm):
     def to_yaml(cls, dumper, node):
         return dumper.represent_mapping(
           u'!AlarmAnalog',
-          node._get_yaml_dict())
+          node.yaml_dict)
 
     @classmethod
     def from_yaml(cls, constructor, node):

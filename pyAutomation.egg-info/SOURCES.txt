@@ -9,10 +9,11 @@ pyAutomation.egg-info/dependency_links.txt
 pyAutomation.egg-info/top_level.txt
 pyAutomation/DataObjects/Alarm.py
 pyAutomation/DataObjects/AlarmAnalog.py
-pyAutomation/DataObjects/Point.py
 pyAutomation/DataObjects/PointAbstract.py
 pyAutomation/DataObjects/PointAnalog.py
+pyAutomation/DataObjects/PointAnalogAbstract.py
 pyAutomation/DataObjects/PointAnalogDual.py
+pyAutomation/DataObjects/PointAnalogReadOnly.py
 pyAutomation/DataObjects/PointAnalogReadOnlyAbstract.py
 pyAutomation/DataObjects/PointAnalogScaled.py
 pyAutomation/DataObjects/PointDiscrete.py

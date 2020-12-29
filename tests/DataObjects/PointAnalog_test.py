@@ -17,7 +17,7 @@ class TestPointAnalog(unittest.TestCase):
           update_period=1.0,
           retentive=True,
         )
-        self.point.config("temp_1")
+        self.point.name = "temp_1"
         self.point.value = 50.0
 
     def test_a_json_pickle(self):
@@ -79,7 +79,7 @@ class TestPointAnalog(unittest.TestCase):
         yml.dump(self.point, stream)
         s=stream.getvalue()
         unpickled_point = yml.load(s)
-        unpickled_point.config("feed_state")
+        unpickled_point.nane = "feed_state"
 
         self.assertEqual(
           self.point.description,

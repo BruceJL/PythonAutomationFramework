@@ -1,26 +1,23 @@
-""""
-Created on Apr 16, 2016
-
-@author: Bruce
-"""
-
-from .Point import Point
-from typing import Dict, Any
-from .PointReadOnlyAbstract import PointReadOnlyAbstract
+from typing import TYPE_CHECKING
+from .PointAbstract import PointAbstract
 from .PointReadOnly import PointReadOnly
 
+if TYPE_CHECKING:
+    from typing import Dict, Any, List
+    from .PointReadOnlyAbstract import PointReadOnlyAbstract
 
-class PointEnumeration(Point):
+
+class PointEnumeration(PointAbstract):
 
     def __init__(self, **kwargs) -> None:
-        self.states = []
+        self.states = []  # type: List[str]
 
         tmp_value = None
         if 'value' in kwargs:
             tmp_value = kwargs['value']
             kwargs.pop('value', None)
 
-        super().__init__(**kwargs)
+        super().configure_parameters(**kwargs)
 
         if tmp_value is not None:
             super()._set_value(tmp_value)
@@ -31,15 +28,14 @@ class PointEnumeration(Point):
     keywords = property(_get_keywords)
 
     # human readable value
-    @property
-    def human_readable_value(self):
+    def _get_human_readable_value(self) -> 'str':
         return self.states[self._value]
 
     # hmi_value
     def _get_hmi_value(self):
         return self.value
 
-    def _set_hmi_value(self, v: str):
+    def _set_hmi_value(self, v: 'str'):
         assert v in self.states, \
           "Tried to set " + self.description + " to a state of " + v + \
           " which is not a valid state."
@@ -48,7 +44,7 @@ class PointEnumeration(Point):
     hmi_value = property(_get_hmi_value, _set_hmi_value)
 
     # value
-    def _get_value(self) -> object:
+    def _get_value(self) -> 'str':
         return self.states[super()._get_value()]
 
     def _set_value(self, v: "str") -> 'None':
@@ -60,31 +56,28 @@ class PointEnumeration(Point):
     value = property(_get_value, _set_value)
 
     # forced value
-    @property
-    def forced_value(self):
+    def _get_forced_value(self):
         return self.states[super().value]
 
-    @forced_value.setter
-    def forced_value(self, v):
+    def _set_forced_value(self, v):
         super().forced_value(self.states.index(v))
 
-    # data display width
-    @property
-    def data_display_width(self) -> int:
+    def _get_data_display_width(self) -> 'int':
         x = 0
         for s in self.states:
             if len(s) > x:
                 x = len(s)
         return x
 
-    @property
-    def hmi_object_name(self)-> str:
+    def _get_hmi_object_name(self)-> 'str':
         return "PointEnumerationWindow"
 
-    def get_readonly_object(self) -> 'PointReadOnlyAbstract':
+    @property
+    def readonly_object(self) -> 'PointReadOnlyAbstract':
         return PointReadOnly(self)
 
-    def get_readwrite_object(self) -> 'PointEnumeration':
+    @property
+    def readwrite_object(self) -> 'PointEnumeration':
         return self
 
     def __getstate__(self) -> 'Dict[str, Any]':
@@ -105,8 +98,8 @@ class PointEnumeration(Point):
         self.states = d['states']
         super().__setstate__(d)
 
-    def _get_yaml_dict(self) -> 'Dict[str, Any]':
-        d = super()._get_yaml_dict()
+    def yaml_dict(self) -> 'Dict[str, Any]':
+        d = super().yaml_dict
         d.update(dict(states=self.states))
         return d
 
@@ -115,7 +108,7 @@ class PointEnumeration(Point):
     def to_yaml(cls, dumper, node):
         return dumper.represent_mapping(
           u'!PointEnumeration',
-          node._get_yaml_dict())
+          node.yaml_dict)
 
     @classmethod
     def from_yaml(cls, constructor, node):

@@ -56,17 +56,13 @@ class PointReadOnly(PointReadOnlyAbstract):
     def _get_writer(self) -> object:
         return self._point.writer
 
-    writer = property(_get_writer)
-
-    @property
-    def human_readable_value(self):
+    def _get_human_readable_value(self):
         return self._point.human_readable_value
 
-    @property
-    def data_display_width(self) -> int:
+    def _get_data_display_width(self) -> 'int':
         return self._point.data_display_width
 
-    def _get_description(self) -> str:
+    def _get_description(self) -> 'str':
         return self._point.description
 
     description = property(_get_description)
@@ -92,13 +88,17 @@ class PointReadOnly(PointReadOnlyAbstract):
         return self._point.hmi_object_name
 
     # Return a pointer to a read only instance of this object
-    def get_readonly_object(self) -> 'PointReadOnlyAbstract':
+    @property
+    def readonly_object(self) -> 'PointReadOnlyAbstract':
         return self
 
     # Return a pointer to a read/write instance of this object.
-    def get_readwrite_object(self) -> 'PointAbstract':
+    @property
+    def readwrite_object(self) -> 'PointAbstract':
         return self._point.get_readwrite_object()
 
-    @property
-    def editable_value(self) -> 'str':
-        return self._point.editable_value
+    def _get_request_value(self) -> 'str':
+        return self._point.request_value
+
+    def _set_request_value(self, value) -> 'None':
+        self._point.request_value = value

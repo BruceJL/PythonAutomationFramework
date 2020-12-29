@@ -194,7 +194,7 @@ class TestProcessValue(unittest.TestCase):
           off_state_description="Off",
           hmi_writeable=False,
         )
-        point_run_pump.config("run_pump")
+        point_run_pump.name = "run_pump"
 
         # Pump ProcessValue assembly.
         self.point = ProcessValue(point_pump_water_pressure)
@@ -215,8 +215,6 @@ class TestProcessValue(unittest.TestCase):
         self.point.add_alarm("H2", alarm_h2_pump_water_pressure)
         self.point.add_alarm("L1", alarm_l1_pump_water_pressure)
         self.point.add_alarm("L2", alarm_l2_pump_water_pressure)
-
-        self.point.config("pump_water_pressure")
 
     def test_json_pickle(self):
         pickle_text = jsonpickle.encode(self.point)

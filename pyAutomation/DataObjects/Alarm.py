@@ -117,26 +117,22 @@ class Alarm(object):
         """
         pass
 
-    def _get_name(self) -> 'str':
+    @property
+    def name(self) -> 'str':
         """ Returns the name of the object with some error checking. """
         assert self._name is not None, \
             "No name has been assigned"
         return self._name
 
-    def _set_name(self, name):
-        """ sets the name of the object with some error checking. Likely
-        depreciated """
-        try:
-            if(self._name is None):
-                self._name = name
-            else:
-                assert self._name == "", \
-                  "Alarm has already been assigned a name."
-                self._name = name
-        except AttributeError:
-            self._name = name
+    @name.setter
+    def name(self, name):
+        """ sets the name of the object with some error checking. """
 
-    name = property(_get_name, _set_name)
+        assert self._name is not None, (
+          f"Alarm has already been assigned a name of {self._name} cannot "
+          f"assign a new name of {name}"
+        )
+        self._name = name
 
     @property
     def status_string(self) -> str:
@@ -168,20 +164,18 @@ class Alarm(object):
 
     # Get the time.monotonic() where the alarm should be evaluated for a state
     # change, only makes sense when we're waiting on a on/off timer.
-    def _get_wake_time(self) -> float:
-        """
-        Gets the amount of time from now that the alarm should be re-evaluated
-        at. Used by the alarm handler to calculate it's wake up time.
+    @property
+    def wake_time(self) -> 'float':
+        """Gets the amount of time from now that the alarm should be
+        re-evaluated at. Used by the alarm handler to calculate it's wake up
+        time."""
 
-        """
         if "ON_DELAY" == self._state:
             return self.on_delay + self._timer
         elif "OFF_DELAY" == self._state:
             return self.off_delay + self._timer
         else:
             return float('inf')
-
-    wake_time = property(_get_wake_time)
 
     @property
     def alarm_state(self) -> str:
@@ -199,19 +193,19 @@ class Alarm(object):
         else:
             return "LOGIC FAULT"
 
-    def _set_input(self, b: bool):
+    @property
+    def input(self) -> 'bool':
+        """ Gets the input value of the alarm. """
+        return self._input
+
+    @input.setter
+    def input(self, b: 'bool'):
         """ Sets the input value of the alarm. """
         if self._input != b:
             self._input = b
             self.evaluate()
 
-    def _get_input(self):
-        """ Gets the input value of the alarm. """
-        return self._input
-
-    input = property(_get_input, _set_input)
-
-    def acknowledge(self) -> None:
+    def acknowledge(self) -> 'None':
         """ Marks the alarm as acknowledged. """
         self.acknowledged = True
         logger.info("Acknowledging " + self.name)
@@ -446,7 +440,8 @@ class Alarm(object):
         self._activation_time = dateutil.parser.parse(d['activation_time'])
         self._is_reset_time   = dateutil.parser.parse(d['is_reset_time'])
 
-    def _get_yaml_dict(self) -> 'Dict[str, Any]':
+    @property
+    def yaml_dict(self) -> 'Dict[str, Any]':
         """
         Creates a dict representation of the object suitable for YAML storage in
         a configuration file.
@@ -474,7 +469,7 @@ class Alarm(object):
 
         return dumper.represent_mapping(
           u'!Alarm',
-          node._get_yaml_dict())
+          node.yaml_dict)
 
     @classmethod
     def from_yaml(cls, constructor, node):

@@ -2,20 +2,21 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 import ruamel
 
+from pyAutomation.DataObjects.PointAbstract import PointAbstract
+from pyAutomation.DataObjects.ProcessValue import ProcessValue
+from pyAutomation.DataObjects.PointAnalog import PointAnalog
+from pyAutomation.DataObjects.PointAnalogDual import PointAnalogDual
+from pyAutomation.DataObjects.PointAnalogScaled import PointAnalogScaled
+from pyAutomation.DataObjects.PointDiscrete import PointDiscrete
+from pyAutomation.DataObjects.PointEnumeration import PointEnumeration
+from pyAutomation.DataObjects.Alarm import Alarm
+from pyAutomation.DataObjects.AlarmAnalog import AlarmAnalog
+
 if TYPE_CHECKING:
     from typing import Dict
-    from pyAutomation.DataObjects.PointAbstract import PointAbstract
     from pyAutomation.DataObjects.PointReadOnly import PointReadOnly
     from pyAutomation.DataObjects.PointReadOnlyAbstract \
       import PointReadOnlyAbstract
-    from pyAutomation.DataObjects.ProcessValue import ProcessValue
-    from pyAutomation.DataObjects.PointAnalog import PointAnalog
-    from pyAutomation.DataObjects.PointAnalogDual import PointAnalogDual
-    from pyAutomation.DataObjects.PointAnalogScaled import PointAnalogScaled
-    from pyAutomation.DataObjects.PointDiscrete import PointDiscrete
-    from pyAutomation.DataObjects.PointEnumeration import PointEnumeration
-    from pyAutomation.DataObjects.Alarm import Alarm
-    from pyAutomation.DataObjects.AlarmAnalog import AlarmAnalog
 
     from pyAutomation.Supervisory.PointHandler import PointHandler
     from pyAutomation.Supervisory.SupervisedThread import SupervisedThread
@@ -49,7 +50,7 @@ class PointManager:
         data = None
         with path.open() as fp:
             data = PointManager().yml.load(fp)
-        PointManager.load_point_from_yaml_string(data)
+        PointManager().load_point_from_yaml_string(data)
 
     @staticmethod
     def load_points_from_yaml_string(
@@ -334,12 +335,12 @@ def __get_point_rw(
 
 def __get_point_ro(point_name: 'str') -> 'PointReadOnly':
     if 'None' != point_name:
-        return find_point(point_name).get_readonly_object()
+        return find_point(point_name).readonly_object
 
 
 def __get_process_ro(point_name: 'str') -> 'ProcessValue':
     if 'None' != point_name:
-        return find_point(point_name).get_readonly_object()
+        return find_point(point_name).readonly_object
 
 
 def __get_alarm_rw(
