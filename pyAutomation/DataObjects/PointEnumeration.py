@@ -9,9 +9,9 @@ if TYPE_CHECKING:
 
 class PointEnumeration(PointAbstract):
 
-    def __init__(self, **kwargs) -> None:
-        self.states = []  # type: List[str]
+    states = []  # type: List[str]
 
+    def __init__(self, **kwargs) -> None:
         tmp_value = None
         if 'value' in kwargs:
             tmp_value = kwargs['value']
@@ -20,57 +20,47 @@ class PointEnumeration(PointAbstract):
         super().configure_parameters(**kwargs)
 
         if tmp_value is not None:
-            super()._set_value(tmp_value)
+            self._value = tmp_value
 
-    def _get_keywords(self):
+    @property
+    def keywords(self):
         return super().keywords + ['states']
 
-    keywords = property(_get_keywords)
-
-    # human readable value
-    def _get_human_readable_value(self) -> 'str':
-        return self.states[self._value]
-
     # hmi_value
-    def _get_hmi_value(self):
+    @property
+    def hmi_value(self) -> 'str':
         return self.value
 
-    def _set_hmi_value(self, v: 'str'):
-        assert v in self.states, \
-          "Tried to set " + self.description + " to a state of " + v + \
-          " which is not a valid state."
-        super()._set_hmi_value(v)
-
-    hmi_value = property(_get_hmi_value, _set_hmi_value)
+    @hmi_value.setter
+    def hmi_value(self, v: 'str') -> 'None':
+        self.value = v
 
     # value
-    def _get_value(self) -> 'str':
-        return self.states[super()._get_value()]
+    @property
+    def value(self) -> 'str':
+        return self.states[self._value]
 
-    def _set_value(self, v: "str") -> 'None':
+    @value.setter
+    def value(self, v: 'str') -> 'None':
         assert v in self.states, "Tried to set " + self.description + \
           " to a state of " + str(v) + " which is not a valid state."
+        self._value = self.states.index(v)
 
-        super()._set_value(self.states.index(v))
-
-    value = property(_get_value, _set_value)
-
-    # forced value
-    def _get_forced_value(self):
-        return self.states[super().value]
-
-    def _set_forced_value(self, v):
-        super().forced_value(self.states.index(v))
-
-    def _get_data_display_width(self) -> 'int':
+    @property
+    def data_display_width(self) -> 'int':
         x = 0
         for s in self.states:
             if len(s) > x:
                 x = len(s)
         return x
 
-    def _get_hmi_object_name(self)-> 'str':
+    @property
+    def hmi_object_name(self) -> 'str':
         return "PointEnumerationWindow"
+
+    @property
+    def readonly(self) -> 'bool':
+        return False
 
     @property
     def readonly_object(self) -> 'PointReadOnlyAbstract':
@@ -98,9 +88,11 @@ class PointEnumeration(PointAbstract):
         self.states = d['states']
         super().__setstate__(d)
 
+    # used to produce a yaml representation for config storage.
+    @property
     def yaml_dict(self) -> 'Dict[str, Any]':
         d = super().yaml_dict
-        d.update(dict(states=self.states))
+        d.update({'states': self.states})
         return d
 
     # used to produce a yaml representation for config storage.
@@ -112,5 +104,17 @@ class PointEnumeration(PointAbstract):
 
     @classmethod
     def from_yaml(cls, constructor, node):
-        d = constructor.construct_mapping(node)
-        return PointEnumeration(**d)
+        # d = constructor.construct_mapping(node, deep=True)
+        # return PointEnumeration(**d)
+        value = constructor.construct_mapping(node, deep=True)
+
+        p = PointEnumeration(
+          states = value['states'],
+          description = value['description'],
+          hmi_writeable = value['hmi_writeable'],
+          requestable = value['requestable'],
+          retentive = value['retentive'],
+          update_period = value['update_period'],
+        )
+
+        return p

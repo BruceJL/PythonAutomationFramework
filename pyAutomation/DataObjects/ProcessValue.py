@@ -1,6 +1,5 @@
 import logging
 from typing import TYPE_CHECKING
-from ruamel import yaml
 
 from .PointAnalogReadOnlyAbstract import PointAnalogReadOnlyAbstract
 
@@ -8,15 +7,15 @@ if TYPE_CHECKING:
     from .PointAbstract import PointAbstract
     from .AlarmAnalog import AlarmAnalog
     from .PointAnalog import PointAnalog
-    from typing import Dict, Any, Callable
+    from typing import Dict, Any
+    from datetime import datetime
 
 logger = logging.getLogger('controller')
-
-yaml = yaml.YAML()
 
 
 class ProcessValue(PointAnalogReadOnlyAbstract):
     yaml_tag = u'!ProcessValue'
+    _name = None  # type: str
 
     # this is the callback passed to the pointAnalog that this ProcessValue
     # wraps
@@ -26,8 +25,6 @@ class ProcessValue(PointAnalogReadOnlyAbstract):
             self.alarms[key].evaluate_analog(self._point.value)
 
     _point = None  # type: PointAnalogReadOnlyAbstract
-    _point_rw = None  # type: PointAnalog
-    _name = None  # type: str
 
     def __init__(self, point_analog: 'PointAnalogReadOnlyAbstract') -> 'None':
 
@@ -43,57 +40,66 @@ class ProcessValue(PointAnalogReadOnlyAbstract):
         assert point_analog is not None,\
             "ProcessValue instanciated with null point."
 
-        self._point = point_analog.readonly_object
-        point_analog.add_observer("ProcessValue", self.point_updated)
-
-        # In order to setup the name of the analog point, we need to
-        # temporarly hold on to a reference of the r/w object.
-        # and discard it after the name is set.
-        self._point_rw = point_analog
+        self._point = point_analog
 
     def config(self) -> 'None':
-        self._point_rw.config()
+        self._point.name = f"{self._name}.point"
+        self._point.config()
+
+        # now that the point has been named and configured, switch over to a
+        # read-only copy of the object.
+
+        self._point = self._point.readonly_object
+
+        self._point.add_observer("ProcessValue", self.point_updated)
 
         for key, value in self.control_points.items():
-            value.config(n + ".control_points." + key)
+            value.config()
 
         for key, value in self.related_points.items():
-            value.config(n + ".related_points." + key)
+            value.config()
 
         for key, value in self.alarms.items():
-            value.config(n + " .alarms." + key)
+            value.config()
 
     # methods to add alarms and points.
     def add_alarm(self, name, alarm_analog):
         self.alarms[name] = alarm_analog
+        alarm_analog.name = f"{self.name}.alarms.{name}"
 
-    def add_control_point(self, n, point):
-        self.control_points[n] = point
+    def add_control_point(self, name, point):
+        self.control_points[name] = point
+        point.name = f"{self.name}.control.{name}"
 
-    def add_related_point(self, n, point):
-        self.related_points[n] = point
+    def add_related_point(self, name, point):
+        self.related_points[name] = point
+        point.name = f"{self.name}.related.{name}"
 
     # #########################################################
     # Below are properties proxied from the wrapped PointAnalog.
 
     # point name
     @property
-    def name(self) -> str:
-        return self._point.name
+    def name(self) -> 'str':
+        return self._name
+
+    @name.setter
+    def name(self, name) -> 'None':
+        self._name = name
 
     # Point EU value
     @property
-    def value(self):
+    def value(self) -> 'float':
         return self._point.value
 
     # point HMI value
     @property
-    def hmi_value(self):
+    def hmi_value(self) -> 'str':
         return self._point.hmi_value
 
     @hmi_value.setter
-    def hmi_value(self, v):
-        self._point.hmi_value = v
+    def hmi_value(self, value) -> 'None':
+        self._point.hmi_value = value
 
     # Point quaity
     @property
@@ -107,25 +113,25 @@ class ProcessValue(PointAnalogReadOnlyAbstract):
 
     # Description
     @property
-    def description(self) -> str:
+    def description(self) -> 'str':
         return self._point.description
 
     # human readable value
     @property
-    def human_readable_value(self) -> str:
+    def human_readable_value(self) -> 'str':
         return self._point.human_readable_value
 
     # last update property
     @property
-    def last_update(self):
+    def last_update(self) -> 'datetime':
         return self._point.last_update
 
     @property
-    def next_update(self):
+    def next_update(self) -> 'datetime':
         return self._point.next_update
 
     @property
-    def readonly(self):
+    def readonly(self) -> 'bool':
         return True
 
     @property
@@ -138,26 +144,26 @@ class ProcessValue(PointAnalogReadOnlyAbstract):
 
     # HMI writable
     @property
-    def hmi_writeable(self):
+    def hmi_writeable(self) -> 'bool':
         return self._point.hmi_writeable
 
     # data display width
     @property
-    def data_display_width(self) -> int:
+    def data_display_width(self) -> 'int':
         return self._point.data_display_width
 
     @property
-    def hmi_object_name(self) -> str:
+    def hmi_object_name(self) -> 'str':
         return "ProcessValueWindow"
 
     # writer
     @property
-    def writer(self) -> object:
+    def writer(self) -> 'object':
         return self._point.writer
 
     # unit of measure
     @property
-    def u_of_m(self) -> str:
+    def u_of_m(self) -> 'str':
         return self._point.u_of_m
 
     @property
@@ -171,7 +177,7 @@ class ProcessValue(PointAnalogReadOnlyAbstract):
     # values for live object data for transport over JSON.
     def __getstate__(self) -> 'Dict[str, Any]':
         d = {
-          'point': self._point,
+          'point': self._point.readwrite_object,
           'high_display_limit': self.high_display_limit,
           'low_display_limit': self.low_display_limit,
           'control_points': self.control_points,
@@ -207,7 +213,7 @@ class ProcessValue(PointAnalogReadOnlyAbstract):
                 rps[k] = self.related_points[k]
 
         d = {
-          'point': self._point,
+          'point': self._point.readwrite_object,
           'high_display_limit': self.high_display_limit,
           'low_display_limit': self.low_display_limit,
           'control_points': cps,

@@ -1,9 +1,9 @@
 import unittest
 import jsonpickle
-import ruamel.yaml
-from ruamel.yaml.compat import StringIO
 
 from pyAutomation.DataObjects.PointDiscrete import PointDiscrete
+from pyAutomation.Supervisory.PointManager import PointManager
+
 
 class TestPointDiscrete(unittest.TestCase):
 
@@ -17,6 +17,11 @@ class TestPointDiscrete(unittest.TestCase):
           requestable           = True,
           retentive             = True,
           update_period         = 20.0,
+        )
+        self.point.value = True
+        PointManager().add_to_database(
+          name = "pump_run",
+          obj = self.point,
         )
 
     def test_json_pickle(self):
@@ -54,16 +59,11 @@ class TestPointDiscrete(unittest.TestCase):
         )
 
     def test_a_yaml_pickle(self):
-        yml = ruamel.yaml.YAML(typ='safe', pure=True)
-        yml.default_flow_style = False
-        yml.indent(sequence=4, offset=2)
-
-        yml.register_class(PointDiscrete)
-
-        stream = StringIO()
-        yml.dump(self.point, stream)
-        s=stream.getvalue()
-        unpickled_point = yml.load(s)
+        s = PointManager().dump_database_to_yaml()
+        PointManager().clear_database()
+        print (f"YAML:\n {s}")
+        PointManager().load_points_from_yaml_string(s)
+        unpickled_point = PointManager().find_point("pump_run")
 
         self.assertEqual(
           self.point.description,

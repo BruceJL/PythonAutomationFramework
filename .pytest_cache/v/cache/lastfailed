@@ -1,16 +1,11 @@
 {
-  "tests/DataObjects/PointAnalogDual_test.py::TestPointAnalogDual": true,
-  "tests/DataObjects/PointAnalogDual_test.py::TestPointAnalogDual::test_json_pickle": true,
-  "tests/DataObjects/PointAnalogDual_test.py::TestPointAnalogDual::test_yaml_pickle": true,
-  "tests/DataObjects/PointAnalogScaled_test.py::TestPointAnalogScaled::test_json_pickle": true,
-  "tests/DataObjects/PointAnalogScaled_test.py::TestPointAnalogScaled::test_scaling": true,
-  "tests/DataObjects/PointAnalogScaled_test.py::TestPointAnalogScaled::test_yaml_pickle": true,
-  "tests/DataObjects/PointAnalog_test.py::TestPointAnalog::test_set_hmi_value": true,
-  "tests/DataObjects/PointDiscrete_test.py::TestPointDiscrete::test_a_yaml_pickle": true,
-  "tests/DataObjects/PointEnumeration_test.py::TestPointEnumeration::test_a_json_pickle": true,
-  "tests/DataObjects/PointEnumeration_test.py::TestPointEnumeration::test_a_yaml_pickle": true,
-  "tests/DataObjects/PointReadOnly_test.py::TestPointReadOnly::test_json_pickle_analog": true,
-  "tests/DataObjects/PointReadOnly_test.py::TestPointReadOnly::test_json_pickle_discrete": true,
-  "tests/DataObjects/PointReadOnly_test.py::TestPointReadOnly::test_json_pickle_enumeration": true,
-  "tests/DataObjects/ProcessValue_test.py::TestProcessValue::test_yaml_pickle": true
+  "tests/DataObjects/AlarmAnalog_test.py": true,
+  "tests/DataObjects/Alarm_test.py": true,
+  "tests/DataObjects/PointAnalogDual_test.py": true,
+  "tests/DataObjects/PointAnalogScaled_test.py": true,
+  "tests/DataObjects/PointAnalog_test.py": true,
+  "tests/DataObjects/PointDiscrete_test.py": true,
+  "tests/DataObjects/PointEnumeration_test.py": true,
+  "tests/DataObjects/PointReadOnly_test.py": true,
+  "tests/DataObjects/ProcessValue_test.py": true
 }

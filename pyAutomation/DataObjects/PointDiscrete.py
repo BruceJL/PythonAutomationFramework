@@ -37,6 +37,10 @@ class PointDiscrete(PointAbstract):
         #     x = False
         super()._set_hmi_value(v)
 
+    @property
+    def readonly(self) -> 'bool':
+        return False
+
     # human readable value
     @property
     def human_readable_value(self) -> str:

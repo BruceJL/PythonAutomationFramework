@@ -1,12 +1,13 @@
 from datetime import datetime
+from typing import Dict, Any, Callable
 
 from .PointAnalogReadOnlyAbstract import PointAnalogReadOnlyAbstract
+from .PointReadOnlyAbstract import PointReadOnlyAbstract
 from pyAutomation.Supervisory.Interruptable import Interruptable
-
-from typing import Dict, Any
 
 
 class PointAnalogDual(
+  PointReadOnlyAbstract,
   PointAnalogReadOnlyAbstract,
   Interruptable,
 ):
@@ -15,7 +16,7 @@ class PointAnalogDual(
     _value = 0.0  # type: float
     _quality = False  # type: bool
     _last_update = datetime.now()
-    _observers = {}  # type: Dict[str, Interruptable]
+    _observers = {}  # type: Dict[str, Callable]
     write_request = False
 
     def __init__(
@@ -67,7 +68,7 @@ class PointAnalogDual(
 
     # get the engineering units value
     @property
-    def value(self):
+    def value(self) -> 'Any':
         return self._value
 
     # human readable value
@@ -125,8 +126,12 @@ class PointAnalogDual(
 
     # name
     @property
-    def name(self):
+    def name(self) -> 'str':
         return self._name
+
+    @name.setter
+    def name(self, value) -> 'None':
+        self._name = value
 
     # Writer
     @property

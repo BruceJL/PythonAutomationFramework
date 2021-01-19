@@ -1,7 +1,6 @@
 import struct
 import math
-from abc import ABC, abstractmethod
-from .PointReadOnlyAbstract import PointReadOnlyAbstract
+from abc import ABC
 
 
 valid_data_types = [
@@ -21,13 +20,8 @@ valid_data_types = [
 ]
 
 
-class PointAnalogReadOnlyAbstract(PointReadOnlyAbstract, ABC):
+class PointAnalogReadOnlyAbstract(ABC):
     """ Abstract implementation of a read-only analog point """
-
-    @property
-    @abstractmethod
-    def u_of_m(self) -> 'str':
-        pass
 
     @staticmethod
     def datatype_length_bytes(data_type: 'str') -> 'int':

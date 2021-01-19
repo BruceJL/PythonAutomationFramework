@@ -26,16 +26,13 @@ class AlarmEmailer(AlarmNotifier):
         self.mail_sender = ""
         self.mail_receivers = ""
 
-    def notify(self, alarm: Alarm, verb: str) -> None:
-        self.logger.info("notifying for %s to %s", alarm.description, verb)
+    def notify(self, alarm: Alarm, verb: 'str') -> None:
+        self.logger.info(f"notifying for {alarm.description} to {verb}")
         message = MIMEText(
-            "Alarm: {} {} \n"
-            "Consequences: {} \n"
-            "More info: {}".format(
-              alarm.description,
-              verb,
-              alarm.consequences,
-              alarm.more_info))
+          f"Alarm: {alarm.description} {verb} \n"
+          f"Consequences: {alarm.consequences} \n"
+          f"More info: {alarm.more_info}"
+        )
 
         message['Subject'] = alarm.description + " alarm"
         message['From'] = self.mail_sender
@@ -49,7 +46,9 @@ class AlarmEmailer(AlarmNotifier):
             self.mailhost,
             self.mailport,
             self.local_hostname,
-            self.logger,))
+            self.logger,
+          )
+        )
         t.start()
 
     @staticmethod
@@ -58,10 +57,12 @@ class AlarmEmailer(AlarmNotifier):
             smtp_obj = smtplib.SMTP(
               mailhost,
               mailport,
-              local_hostname)
+              local_hostname,
+            )
             smtp_obj.sendmail(message['From'], message['To'], str(message))
             smtp_obj.quit()
             logger.info("Successfully sent email")
+
         except smtplib.SMTPException:
             # logger.error(traceback.format_exc())
             logger.error("Error: unable to send email: " + str(message))
@@ -87,7 +88,8 @@ class AlarmEmailer(AlarmNotifier):
     def to_yaml(cls, dumper, node):
         return dumper.represent_mapping(
           u'!AlarmEmailer',
-          node.yaml_dict
+          node.yaml_dict,
+        )
 
     @classmethod
     def from_yaml(cls, constructor, node):
@@ -95,4 +97,5 @@ class AlarmEmailer(AlarmNotifier):
 
         return AlarmEmailer(
           name = value['name'],
-          logger = value['logger'])
+          logger = value['logger'],
+        )

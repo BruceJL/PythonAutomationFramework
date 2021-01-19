@@ -2,3 +2,4 @@
 **.pyc
 build/
 .mypy_cache/
+.pytest_cache/

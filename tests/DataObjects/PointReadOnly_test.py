@@ -5,12 +5,14 @@ from pyAutomation.DataObjects.PointAnalog import PointAnalog
 from pyAutomation.DataObjects.PointEnumeration import PointEnumeration
 from pyAutomation.DataObjects.PointDiscrete import PointDiscrete
 from pyAutomation.DataObjects.PointReadOnly import PointReadOnly
+from pyAutomation.Supervisory.PointManager import PointManager
 
 
 class TestPointReadOnly(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
+        # Build the PointAnalog
         self.point_analog = PointAnalog(
           description   = "Temperature reading",
           u_of_m        = "ºC",
@@ -19,20 +21,33 @@ class TestPointReadOnly(unittest.TestCase):
           update_period = 1.0,
         )
 
-        self.point_analog.name = "temp_1"
+        PointManager().add_to_database(
+          name = "temp_1",
+          obj = self.point_analog,
+        )
 
+        # Build the PointDiscrete
         self.point_discrete= PointDiscrete(
           description="run cooling",
           hmi_writeable=False,
         )
-        self.point_discrete.config("run_cooling")
 
+        PointManager().add_to_database(
+          name = "run_cooling",
+          obj = self.point_discrete,
+        )
+
+        # Build the PointEnumeration
         self.point_enumeration=PointEnumeration(
           description="System mode",
           states=["Hand", "Off", "Auto"],
           hmi_writeable=False,
         )
-        self.point_enumeration.config("system_mode")
+
+        PointManager().add_to_database(
+          name = "system_mode",
+          obj = self.point_enumeration,
+        )
 
     def test_json_pickle_analog(self):
         self.point = PointReadOnly(self.point_analog)

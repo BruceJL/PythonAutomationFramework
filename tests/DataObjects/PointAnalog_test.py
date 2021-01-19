@@ -65,8 +65,8 @@ class TestPointAnalog(unittest.TestCase):
         )
 
     def test_set_hmi_value(self):
-        self.point.hmi_value = "100.0"
-        self.assertEqual(100.0, self.point.hmi_value)
+        self.point.value = 100.0
+        self.assertEqual('100.0 ºC', self.point.hmi_value)
 
     def test_a_yaml_pickle(self):
         yml = ruamel.yaml.YAML(typ='safe', pure=True)

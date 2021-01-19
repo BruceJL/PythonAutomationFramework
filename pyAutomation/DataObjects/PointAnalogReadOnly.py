@@ -12,13 +12,6 @@ class PointAnalogReadOnly(PointAnalogReadOnlyAbstract):
     def __init__(self, point: 'PointAnalogReadOnlyAbstract') -> None:
         self._point = point
 
-    def __getstate__(self) -> 'Dict[str, Any]':
-        d = dict(point=self._point)
-        return d
-
-    def __setstate__(self, d: 'Dict[str, Any]') -> None:
-        self._point = d['point']
-
     def config(self) -> None:
         pass
 
@@ -103,3 +96,37 @@ class PointAnalogReadOnly(PointAnalogReadOnlyAbstract):
     @property
     def readonly(self):
         return True
+
+    # The dict property is what is used by jsonpickle to transport the object
+    # over the network.
+    def __getstate__(self) -> 'Dict[str, Any]':
+        d = dict(point=self._point)
+        return d
+
+    def __setstate__(self, d: 'Dict[str, Any]') -> None:
+        self._point = d['point']
+
+    # YAML representation for configuration storage.
+    @property
+    def yaml_dict(self) -> 'Dict[str, Any]':
+        d = {
+          'point': self._point,
+        }
+        return d
+
+    # used to produce a yaml representation for config storage.
+    @classmethod
+    def to_yaml(cls, dumper, node):
+        return dumper.represent_mapping(
+          u'!PointAnalogReadOnly',
+          node.yaml_dict)
+
+    @classmethod
+    def from_yaml(cls, constructor, node):
+        value = constructor.construct_mapping(node, deep=True)
+
+        p = PointAnalogReadOnly(
+          point = value['point'],
+         )
+
+        return p

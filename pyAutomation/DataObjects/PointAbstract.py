@@ -12,26 +12,17 @@ class PointAbstract(PointReadOnlyAbstract, ABC):
     ''' Extends the PointAbstract method and provides additional writing methods
     such that a concrete read/write point can be derived from this class '''
 
-    # name of the point in the global point dict.
-    _name = None
-
     # Quality of the point
     _quality = False  # type: bool
 
     # Current value of the point.
-    _value = None
+    _value = None  # type: Any
 
     # the time the point should be next updated.
     _next_update = datetime.now()  # type: datetime
 
-    # human readable description of the point
-    _description = "No description"
-
     # the time the point was last updated.
     _last_update = datetime.now()  # type: datetime
-
-    # object that is able to write to this point.
-    _writer = None  # type: object
 
     # value being requested of the point by a non-owner process
     _request_value = None  # type: object
@@ -96,14 +87,12 @@ class PointAbstract(PointReadOnlyAbstract, ABC):
 
     # value
     @property
-    def value(self) -> object:
-        if self._quality:
-            return self._value
-        else:
-            return 0
+    def value(self) -> 'Any':
+        return self._value
+
 
     @value.setter
-    def value(self, v):
+    def value(self, v: 'Any'):
         if not self.forced:
             self._quality = True
             self.last_update = datetime.now()
@@ -142,10 +131,19 @@ class PointAbstract(PointReadOnlyAbstract, ABC):
             except AttributeError:
                 self._value = v
 
+    # Description
+    @property
+    def description(self) -> 'str':
+        return self._description
+
+    @description.setter
+    def description(self, desc) -> 'None':
+        self._description = desc
+
     # Get and set the owner process
     @property
     def writer(self):
-        return self._writer
+        return super().writer
 
     @writer.setter
     def writer(self, w):
@@ -158,11 +156,6 @@ class PointAbstract(PointReadOnlyAbstract, ABC):
           + "but it's already claimed by " + self._writer.name + "!"
 
         self._writer = w
-
-    # Get the read/write property of this point.
-    @property
-    def readonly(self) -> 'bool':
-        return False
 
     # The Hmi is allowed to edit the point
     @property
@@ -183,15 +176,6 @@ class PointAbstract(PointReadOnlyAbstract, ABC):
     @next_update.setter
     def next_update(self, nu) -> None:
         self._next_update = nu
-
-    # description
-    @property
-    def description(self) -> str:
-        return self._description
-
-    @description.setter
-    def description(self, d: str) -> None:
-        self._description = d
 
     #  forced
     @property
@@ -230,14 +214,10 @@ class PointAbstract(PointReadOnlyAbstract, ABC):
     # name
     @property
     def name(self) -> 'str':
-        assert self._name is not None, \
-          "name is not populated for '" + self.description + "'."
-        return self._name
+        return super().name
 
     @name.setter
     def name(self, name: 'str') -> 'None':
-        assert name is not None, (
-            f"Cannot reassign name of already named point: {self._name}")
         self._name = name
 
     # Used to access point quality.

@@ -2,20 +2,19 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import TYPE_CHECKING
 import logging
+from .Observable import Observable
 
 if TYPE_CHECKING:
     from pyAutomation.DataObjects.PointAbstract import PointAbstract
-    from typing import Callable, Dict, Any, List
+    from typing import Any
 
 logger = logging.getLogger('controller')
 
 
-class PointReadOnlyAbstract(ABC):
+class PointReadOnlyAbstract(Observable, ABC):
     '''PointReadOnlyAbstract is the base type that all points - abstract or
     concrete are derived from. The functions contained in this class will be
     present for every point in the database. '''
-
-    _observers = {}  # type: Dict[str, Callable]
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
@@ -24,10 +23,18 @@ class PointReadOnlyAbstract(ABC):
     def config(self) -> 'None':
         pass
 
-    # value
+    @abstractmethod
+    def value(self) -> 'Any':
+        pass
+
+    # hmi value
     @property
     @abstractmethod
-    def value(self):
+    def hmi_value(self) -> 'str':
+        pass
+
+    @property
+    def hmi_writeable(self) -> 'bool':
         pass
 
     # next_update
@@ -35,12 +42,6 @@ class PointReadOnlyAbstract(ABC):
     @abstractmethod
     def next_update(self) -> 'datetime':
         return datetime.max
-
-    # hmi value
-    @property
-    @abstractmethod
-    def hmi_value(self) -> 'str':
-        pass
 
     # description
     @property
@@ -57,7 +58,7 @@ class PointReadOnlyAbstract(ABC):
     # last_update
     @property
     @abstractmethod
-    def  last_update(self) -> 'datetime':
+    def last_update(self) -> 'datetime':
         pass
 
     # name
@@ -81,27 +82,6 @@ class PointReadOnlyAbstract(ABC):
     @property
     @abstractmethod
     def readonly(self) -> 'bool':
-        pass
-
-    def add_observer(
-      self,
-      name: 'str',
-      observer: 'Callable[[str, Any], Any]') -> 'None':
-        assert name is not None, (
-          "No name supplied for observer added to %s" % self.description
-        )
-        self._observers.update({name: observer})
-
-        logger.info("observer: %s added to point %s", name, self.name)
-
-    def del_observer(self, name: 'str') -> 'None':
-        self._observers.pop(name)
-        logger.info("observer: %s removed from point %s", name, self.name)
-
-    # Human readable value for HMI usage.
-    @property
-    @abstractmethod
-    def human_readable_value(self) -> 'str':
         pass
 
     # HMI data display width. Number of columns needed to display this info.

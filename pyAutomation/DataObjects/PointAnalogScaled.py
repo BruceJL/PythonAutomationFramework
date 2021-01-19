@@ -1,6 +1,8 @@
 from .PointAnalogReadOnly import PointAnalogReadOnly
 from .PointAnalogReadOnlyAbstract import PointAnalogReadOnlyAbstract
 from .PointAnalogAbstract import PointAnalogAbstract
+from .PointConfigurationError import PointConfigurationError
+from .PointAbstract import PointAbstract
 
 import logging
 from typing import TYPE_CHECKING
@@ -10,83 +12,107 @@ if TYPE_CHECKING:
 logger = logging.getLogger('controller')
 
 
-class PointAnalogScaled(PointAnalogAbstract):
-    _keywords = [
+class PointAnalogScaled(
+    PointAnalogAbstract,
+):
+    keywords = [
       'scaling',
       'offset',
       'point',
+      'readonly'
     ]  # type: List[str]
 
-    def __init__(self, **kwargs):
-        self.scaling = 1.0
-        self.offset = 0.0
-        self.point = None
-        self._name = None
-        self._observers = {}
+    scaling = 1.0  # type: float
+    offset = 0.0  # type: float
+    _point = None  # type: PointAnalogAbstract
+    _name = None  # type: str
+    _readonly = False  # type: bool
 
-        for kw in kwargs:
-            assert kw in self.keywords, \
-              "Cannot assign " + str(kw) \
-              + " to PointAnalogScaled, property does not exist"
-            setattr(self, kw, kwargs[kw])
+    def __init__(
+      self,
+      scaling: 'float',
+      offset: 'float',
+      point: 'PointAbstract',
+      readonly: 'bool',
+    ):
+        self.scaling = scaling
+        self.offset = offset
+        self._point = point
+        self._readonly = readonly
+
+        if self._readonly:
+            self._point.writer = self
 
     def config(self) -> 'None':
-        self.sanity_check()
+        pass
 
     def sanity_check(self) -> None:
-        assert self.point is not None, \
+        assert self._point is not None, \
           "No point assigned to this PointAnalogScaled"
 
-    def _get_description(self) -> 'str':
-        return self.point.description
+    @property
+    def name(self) -> 'str':
+        return self._name
 
-    description = property(_get_description)
+    @name.setter
+    def name(self, name: 'str') -> 'None':
+        self._name = name
 
-    def _get_forced(self) -> 'bool':
-        return self.point.forced
+    @property
+    def u_of_m(self) -> 'str':
+        return "counts"
 
-    forced = property(_get_forced)
+    @property
+    def description(self) -> 'str':
+        return self._point.description
 
-    def _get_quality(self) -> 'bool':
-        return self.point.quality
+    @property
+    def readonly(self) -> 'bool':
+        return self._readonly
 
-    def _set_quality(self, q: 'bool') -> 'None':
-        self.point.quality = q
+    @property
+    def forced(self) -> 'bool':
+        return self._point.forced
 
-    def _get_value(self) -> 'float':
-        return (self.point.value - self.offset) / self.scaling
+    @property
+    def quality(self) -> 'bool':
+        return self._point.quality
 
-    def _set_value(self, value: float) -> 'None':
-        self.point.value = value * self.scaling + self.offset
+    @quality.setter
+    def quality(self, q: 'bool') -> 'None':
+        self._point.quality = q
 
-    def _get_writer(self):
-        return self.point.writer
+    @property
+    def value(self) -> 'float':
+        return (self._point.value - self.offset) / self.scaling
 
-    def _set_writer(self, w) -> 'None':
-        self.point.writer = w
+    @value.setter
+    def value(self, value: 'float') -> 'None':
+        self._point.value = value * self.scaling + self.offset
 
-    writer = property(_get_writer, _set_writer)
+    @property
+    def writer(self):
+        return self._point.writer
 
-    def _get_next_update(self):
-        return self.point.next_update
+    @writer.setter
+    def writer(self, w) -> 'None':
+        self._point.writer = w
 
-    next_update = property(_get_next_update)
+    @property
+    def next_update(self):
+        return self._point.next_update
 
-    def _get_data_display_width(self) -> 'int':
+    @property
+    def data_display_width(self) -> 'int':
         return len(self.hmi_value)
 
-    def _get_last_update(self):
-        return self.point.last_update
+    @property
+    def last_update(self):
+        return self._point.last_update
 
-    last_update = property(_get_last_update)
-
-    def _get_hmi_value(self) -> 'str':
-        return self.hmi_value
-
-    hmi_value = property(_get_hmi_value)
-
-    def _get_human_readable_value(self) -> 'str':
-        return self.hmi_value
+    @property
+    def hmi_value(self) -> 'str':
+        return str(self._point.hmi_value)
 
     @property
     def readonly_object(self) -> 'PointAnalogReadOnlyAbstract':
@@ -94,19 +120,42 @@ class PointAnalogScaled(PointAnalogAbstract):
 
     @property
     def readwrite_object(self) -> 'PointAnalogScaled':
+        if self.readonly:
+            assert PointConfigurationError(
+                f"point {self._name} cannot be written to as it is marked "
+                f"read only. To change it's value, write to {self._point.name}."
+            )
         return self
 
     # HMI object name
-    def _get_hmi_object_name(self) -> 'str':
+    @property
+    def hmi_object_name(self) -> 'str':
         return "PointAnalogWindow"
+
+    # values for live object data for transport over JSON.
+    def __getstate__(self) -> 'Dict[str, Any]':
+        d = {
+          'point': self._point,
+          'scaling': self.scaling,
+          'offset': self.offset,
+          'readonly': self.readonly_object,
+        }
+        return d
+
+    def __setstate__(self, d: 'Dict[str, Any]') -> 'None':
+        self._point = d['point']
+        self.scaling = d['scaling']
+        self.offset = d['offset']
+        self._readonly = d['readonly']
 
     # YAML representation for configuration storage.
     @property
     def yaml_dict(self) -> 'Dict[str, Any]':
         d = dict(
-          point=self.point,
+          point=self._point,
           scaling=self.scaling,
           offset=self.offset,
+          readonly=self._readonly
         )
         return d
 
@@ -120,5 +169,4 @@ class PointAnalogScaled(PointAnalogAbstract):
     @classmethod
     def from_yaml(cls, constructor, node):
         value = constructor.construct_mapping(node)
-
         return PointAnalogScaled(**value)

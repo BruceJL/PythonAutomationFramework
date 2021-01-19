@@ -1,9 +1,8 @@
 import unittest
 import jsonpickle
-import ruamel.yaml
-from ruamel.yaml.compat import StringIO
 
 from pyAutomation.DataObjects.PointEnumeration import PointEnumeration
+from pyAutomation.Supervisory.PointManager import PointManager
 
 
 class TestPointEnumeration(unittest.TestCase):
@@ -17,13 +16,17 @@ class TestPointEnumeration(unittest.TestCase):
           states=["OFF", "RUN", "DEPRESSURIZE", "FLUSH"],
           retentive=True,
         )
-        self.point.config("feed_state")
         self.point.value = "FLUSH"
+
+        PointManager().add_to_database(
+          name = "feed_state",
+          obj = self.point,
+        )
 
     def test_a_json_pickle(self):
         pickle_text = jsonpickle.encode(self.point)
         unpickled_point = jsonpickle.decode(pickle_text)
-        unpickled_point.config("feed_state")
+        unpickled_point.name = "feed_state"
 
         self.assertEqual(
           self.point.name,
@@ -66,17 +69,11 @@ class TestPointEnumeration(unittest.TestCase):
         )
 
     def test_a_yaml_pickle(self):
-        yml = ruamel.yaml.YAML(typ='safe', pure=True)
-        yml.default_flow_style = False
-        yml.indent(sequence=4, offset=2)
-
-        yml.register_class(PointEnumeration)
-
-        stream = StringIO()
-        yml.dump(self.point, stream)
-        s=stream.getvalue()
-        unpickled_point = yml.load(s)
-        unpickled_point.config("feed_state")
+        s = PointManager().dump_database_to_yaml()
+        PointManager().clear_database()
+        # print (f"YAML:\n {s}")
+        PointManager().load_points_from_yaml_string(s)
+        unpickled_point = PointManager().find_point("feed_state")
 
         self.assertEqual(
           self.point.description,
@@ -106,11 +103,6 @@ class TestPointEnumeration(unittest.TestCase):
         self.assertEqual(
           self.point.states,
           unpickled_point.states,
-        )
-
-        self.assertEqual(
-          self.point.value,
-          unpickled_point.value,
         )
 
 

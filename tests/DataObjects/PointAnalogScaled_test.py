@@ -1,61 +1,96 @@
 import unittest
 import jsonpickle
-import ruamel.yaml
-from ruamel.yaml.compat import StringIO
 
 from pyAutomation.DataObjects.PointAnalog import PointAnalog
 from pyAutomation.DataObjects.PointAnalogScaled import PointAnalogScaled
+from pyAutomation.Supervisory.PointManager import PointManager
 
 
 class TestPointAnalogScaled(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
-        self.pa = PointAnalog(
+        point = PointAnalog(
           description="Temperature reading 1 (pressure sensor)",
           u_of_m="ºC",
-          hmi_writeable=True,
           update_period=1.2,
         )
-        self.pa.name = "temperature_1"
+        PointManager.add_to_database(
+          name = "temperature_source",
+          obj = point,
+        )
 
-        self.point = PointAnalogScaled(
+        point = PointAnalogScaled(
           scaling = 2.0,
           offset = -1.0,
-          point = self.pa,
+          point = point,
+          readonly = True,
         )
-        self.point.name = "test_scaled_point"
+
+        PointManager.add_to_database(
+          name = "test_scaled_point",
+          obj = point,
+        )
+
+        point = PointAnalog(
+            description="Temperature Setpoint",
+            u_of_m="ºC",
+            update_period=None,
+        )
+
+        PointManager.add_to_database(
+          name = "setpoint",
+          obj = point,
+        )
+
+        point = PointAnalogScaled(
+          scaling = 2.0,
+          offset = -1.0,
+          point = point,
+          readonly = False,
+        )
+
+        PointManager.add_to_database(
+          name = "setpoint_scaled",
+          obj = point,
+        )
 
     def test_scaling(self):
-        self.pa.value = 44.0
-        self.assertEqual(self.point.value, 22.5)
+        point_analog = \
+          PointManager().find_point("temperature_source").readwrite_object
+        point_scaled = \
+          PointManager().find_point("test_scaled_point").readonly_object
 
-        self.point.value = 44.0
-        self.assertEqual(self.pa.value, 87.0)
+        point_analog.value = 44.0
+        print(point_scaled.value)
+        self.assertEqual(point_scaled.value, 22.5)
+
+    def test_unscaling(self):
+        point_analog = \
+            PointManager().find_point("setpoint").readonly_object
+        point_scaled = \
+            PointManager().find_point("setpoint_scaled").readwrite_object
+
+        point_scaled.value = 44.0
+        self.assertEqual(point_analog.value, 87.0)
 
     def test_yaml_pickle(self):
-        yml = ruamel.yaml.YAML(typ='safe', pure=True)
-        yml.default_flow_style = False
-        yml.indent(sequence=4, offset=2)
+        point = PointManager().find_point("test_scaled_point")
+        s = PointManager().dump_database_to_yaml()
+        print (f"YAML:\n {s}")
+        PointManager().clear_database
+        PointManager().load_points_from_yaml_string(s)
+        unpickled_point = PointManager().find_point("test_scaled_point")
 
-        yml.register_class(PointAnalogScaled)
-        yml.register_class(PointAnalog)
-
-        stream = StringIO()
-        yml.dump(self.point, stream)
-        s=stream.getvalue()
-        unpickled_point = yml.load(s)
-        unpickled_point.config("test_scaled_point")
-
-        self.assertEqual(self.point.scaling, unpickled_point.scaling)
-        self.assertEqual(self.point.offset, unpickled_point.offset)
+        self.assertEqual(point.scaling, unpickled_point.scaling)
+        self.assertEqual(point.offset, unpickled_point.offset)
 
     def test_json_pickle(self):
-        pickle_text = jsonpickle.encode(self.point)
+        point = PointManager().find_point("setpoint_scaled").readwrite_object
+        pickle_text = jsonpickle.encode(point)
         unpickled_point = jsonpickle.decode(pickle_text)
-        self.assertEqual(self.point.scaling, unpickled_point.scaling)
-        self.assertEqual(self.point.offset, unpickled_point.offset)
-        self.assertEqual(self.point.point.name, unpickled_point.point.name)
+        self.assertEqual(point.scaling, unpickled_point.scaling)
+        self.assertEqual(point.offset, unpickled_point.offset)
 
 
 if __name__ == '__main__':

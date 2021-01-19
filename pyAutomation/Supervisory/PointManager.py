@@ -1,10 +1,14 @@
 from pathlib import Path
 from typing import TYPE_CHECKING
+import logging
 import ruamel
+from ruamel.yaml.compat import StringIO
 
 from pyAutomation.DataObjects.PointAbstract import PointAbstract
 from pyAutomation.DataObjects.ProcessValue import ProcessValue
 from pyAutomation.DataObjects.PointAnalog import PointAnalog
+from pyAutomation.DataObjects.PointAnalogReadOnly import PointAnalogReadOnly
+from pyAutomation.DataObjects.PointReadOnly import PointReadOnly
 from pyAutomation.DataObjects.PointAnalogDual import PointAnalogDual
 from pyAutomation.DataObjects.PointAnalogScaled import PointAnalogScaled
 from pyAutomation.DataObjects.PointDiscrete import PointDiscrete
@@ -13,8 +17,7 @@ from pyAutomation.DataObjects.Alarm import Alarm
 from pyAutomation.DataObjects.AlarmAnalog import AlarmAnalog
 
 if TYPE_CHECKING:
-    from typing import Dict
-    from pyAutomation.DataObjects.PointReadOnly import PointReadOnly
+    from typing import Dict, Any
     from pyAutomation.DataObjects.PointReadOnlyAbstract \
       import PointReadOnlyAbstract
 
@@ -25,22 +28,28 @@ if TYPE_CHECKING:
 GLOBAL_POINTS = {}  # type: Dict[str, PointAbstract]
 GLOBAL_ALARMS = {}  # type: Dict[str, Alarm]
 
+logger = logging.getLogger('controller')  # type: Logger
+
+# yml parser configuration
+yml = ruamel.yaml.YAML(typ='safe', pure=True)
+yml.default_flow_style = False
+yml.indent(sequence=4, offset=2)
+
+# Register all the requried classes.
+yml.register_class(PointAnalog)
+yml.register_class(PointAnalogDual)
+yml.register_class(PointAnalogScaled)
+yml.register_class(PointDiscrete)
+yml.register_class(PointEnumeration)
+yml.register_class(ProcessValue)
+yml.register_class(Alarm)
+yml.register_class(AlarmAnalog)
+yml.register_class(PointAnalogReadOnly)
+yml.register_class(PointReadOnly)
+
 
 class PointManager:
     ''' Singleton for managing the point database for a system. '''
-
-    logger = None  # type: Logger
-
-    yml = ruamel.yaml.YAML(typ='safe', pure=True)
-    yml.default_flow_style = False
-    yml.register_class(PointAnalog)
-    yml.register_class(PointAnalogDual)
-    yml.register_class(PointAnalogScaled)
-    yml.register_class(PointDiscrete)
-    yml.register_class(PointEnumeration)
-    yml.register_class(ProcessValue)
-    yml.register_class(Alarm)
-    yml.register_class(AlarmAnalog)
 
     @staticmethod
     def load_points_from_yaml_file(file: 'str') -> 'None':
@@ -49,45 +58,46 @@ class PointManager:
         path = Path(file)
         data = None
         with path.open() as fp:
-            data = PointManager().yml.load(fp)
-        PointManager().load_point_from_yaml_string(data)
+            data = yml.load(fp)
+        PointManager().load_points_from_yaml_string(data)
 
     @staticmethod
-    def load_points_from_yaml_string(
-      string: 'str',
-    ):
-        data = PointManager().yml.load(string)
-        PointManager().load_points_from_yaml(data)
-        PointManager().configure_points()
-
-    @staticmethod
-    def load_points_from_yaml(
-      data,
-    ) -> 'None':
+    def load_points_from_yaml_string(string: 'str',) -> 'None':
+        data = yml.load(string)
         for name, obj in data['points'].items():
-            PointManager().load_object(
+            PointManager().add_to_database(
               name=name,
               obj=obj,
             )
-        PointManager().configure_points()
 
     @staticmethod
-    def configure_points():
-        # now that the dict is fully populated, setup all the point names.
-        for k, o in GLOBAL_POINTS.items():
-            PointManager.logger.info("setting name for %s", k)
-            o.config(k)
+    def dump_database_to_yaml() -> 'str':
+        stream = StringIO()
+        yml.dump(
+          {
+            'points': GLOBAL_POINTS,
+            'alarms': GLOBAL_ALARMS,
+          },
+          stream,
+        )
+        return stream.getvalue()
 
     @staticmethod
-    def load_object(
+    def clear_database() -> 'None':
+        GLOBAL_ALARMS.clear()
+        GLOBAL_POINTS.clear()
+
+    @staticmethod
+    def add_to_database(
       name: 'str',
-      obj,
+      obj: 'Any',
     ):
-        if isinstance(obj, (
-          PointAbstract,
-          PointAnalogScaled,
-          PointAnalogDual,
-          ProcessValue,
+        if isinstance(
+          obj, (
+            PointAbstract,
+            PointAnalogScaled,
+            PointAnalogDual,
+            ProcessValue,
         )):
             if name in GLOBAL_POINTS:
                 if isinstance(obj, ProcessValue):
@@ -96,7 +106,7 @@ class PointManager:
             else:
                 GLOBAL_POINTS[name] = obj
             obj.name = name
-
+            obj.config()
 
         elif isinstance(obj, (
           Alarm,
@@ -104,12 +114,6 @@ class PointManager:
         )):
             GLOBAL_ALARMS[name] = obj
             obj.name = name
-
-            for name, obj in data['alarms'].items():
-              if isinstance(obj, Alarm) \
-                or isinstance(obj, AlarmAnalog):
-                  GLOBAL_ALARMS[name] = o
-                  obj.config(name)
 
     @staticmethod
     def assign_points(
@@ -122,7 +126,7 @@ class PointManager:
             for point_name in data['points']:
                 if 'name' in data['points'][point_name]:
                     db_name = data['points'][point_name]['name']
-                    PointManager.logger.info(
+                    logger.info(
                       "assigning database point %s"
                       + " to point: %s in module: %s", db_name, point_name,
                       target_name)
@@ -140,7 +144,7 @@ class PointManager:
                       extra_data=data['points'][point_name]
                     )
                 else:
-                    PointManager.logger.info(
+                    logger.info(
                       "skipping device: %s point: %s as"
                       + " it is unused", target_name, point_name)
 
@@ -153,12 +157,13 @@ class PointManager:
       supervised_thread: 'SupervisedThread',
       extra_data: 'Dict[str, str]',
     ) -> 'None':
+        ''' Assigns a point to a PointHandler
+        '''
 
-        assert point_handler.point_name_valid(object_point_name), \
-            ("{} is not a valid point for {}").format(
-              object_point_name,
-              point_handler.name,
-          )
+        assert point_handler.point_name_valid(object_point_name), (
+          f"{object_point_name} is not a valid point for: "
+          f"{point_handler.name}"
+        )
 
         # Determine the access level for this point.
         logic_rw = point_handler.get_point_access(object_point_name)
@@ -210,12 +215,9 @@ class PointManager:
                 )
             else:
                 assert False, (
-                  "Invalid read/write property of {} assigned to point {}} of "
-                   + "module {}").format(
-                       rw,
-                       object_point_name,
-                       point_handler.name,
-                  )
+                  f"Invalid read/write property of {rw} assigned to point "
+                  f"{object_point_name} of module {point_handler.name}"
+                )
 
         elif 'Alarm' == obj_type:
             if 'rw' == rw:
@@ -232,12 +234,9 @@ class PointManager:
                   )
             else:
                 assert False, (
-                  "Invalid read/write property of {} assigned to point {} of "
-                  +" module {}").format(
-                    rw,
-                    object_point_name,
-                    point_handler.name
-                  )
+                  f"Invalid read/write property of {rw} assigned to point "
+                  f"{object_point_name} of module {point_handler.name}"
+                )
 
         elif obj_type == 'Primative':
             # this is the case for I/O drivers that can be agnostic with the
@@ -274,19 +273,19 @@ class PointManager:
 
     @staticmethod
     def assign_parameters(
-      data: 'Dict[str, str]',
-      target) -> 'None':
+      data: 'Dict[str, Dict[str, str]]',
+      target: 'PointHandler',
+    ) -> 'None':
         if 'parameters' in data:
             for parameter_name in data['parameters']:
 
-                assert parameter_name in target.parameters, \
-                  "tried to add: " + parameter_name + " to " \
-                  + target.name + " but it's not in the parameter list"
+                assert parameter_name in target.parameters, (
+                  f"tried to add: {parameter_name} to {target.name} but it's "
+                  f"not in the parameter list")
 
                 parameter_value = data['parameters'][parameter_name]
-                PointManager().logger.info(
-                  "assigning %s to %s in module %s",
-                  parameter_value, parameter_name, target.name)
+                logger.info(f"assigning {parameter_value} to {parameter_name} "
+                  "in module {target.name}")
 
                 target.__dict__[parameter_name] = parameter_value
 
@@ -300,24 +299,26 @@ class PointManager:
 
     @staticmethod
     def get_hmi_point(s: 'str') -> 'PointReadOnlyAbstract':
-        return find_point(s)
+        return PointManager().find_point(s)
 
+    @staticmethod
+    def find_point(name: 'str') -> 'PointAbstract':
+        if name.find('.') == -1:
+            assert name in GLOBAL_POINTS, \
+                "Cannot locate " + name + " in point database."
+            return GLOBAL_POINTS[name]
+        else:
+            array = name.split('.')
+            assert array[0] in GLOBAL_POINTS, (
+                f"Cannot locate {array[0]} in point database. ({name})")
 
-def find_point(name: 'str') -> 'PointAbstract':
-    if name.find('.') == -1:
-        assert name in GLOBAL_POINTS, \
-            "Cannot locate " + name + " in point database."
-        return GLOBAL_POINTS[name]
-    else:
-        array = name.split('.')
-        assert array[0] in GLOBAL_POINTS, \
-            "Cannot locate " + array[0] + " in point database. (" \
-            + name + ")"
-        point = GLOBAL_POINTS[array[0]]
-        if array[1] == "control_points":
-            return point.control_points[array[2]]
-        elif array[1] == "related_points":
-            return point.related_points[array[2]]
+            point = GLOBAL_POINTS[array[0]]
+            if array[1] == "control_points":
+                return point.control_points[array[2]]
+            elif array[1] == "related_points":
+                return point.related_points[array[2]]
+            else:
+                raise ValueError(f"process value name {name} is malformed.")
 
 
 def __get_point_rw(
@@ -325,7 +326,7 @@ def __get_point_rw(
   supervised_thread: 'SupervisedThread',
 ) -> 'PointAbstract':
     if 'None' != point_name:
-        p = find_point(point_name).get_readwrite_object()
+        p = find_point(point_name).readwrite_object
         assert isinstance(supervised_thread, SupervisedThread), (
            f"Supplied writer ({str(type(supervised_thread))}) for point"
            f"'{point_name}' is not a SupervisedThread")
@@ -335,21 +336,22 @@ def __get_point_rw(
 
 def __get_point_ro(point_name: 'str') -> 'PointReadOnly':
     if 'None' != point_name:
-        return find_point(point_name).readonly_object
+        return PointManager().find_point(point_name).readonly_object
 
 
 def __get_process_ro(point_name: 'str') -> 'ProcessValue':
     if 'None' != point_name:
-        return find_point(point_name).readonly_object
+        return PointManager().find_point(point_name).readonly_object
 
 
 def __get_alarm_rw(
   alarm_name: 'str',
   writer: 'SupervisedThread') -> 'Alarm':
     if 'None' != alarm_name:
-        assert isinstance(writer, SupervisedThread), \
-           "Supplied writer (" + str(type(writer)) + ") for point '" \
-           + alarm_name + "' is not a SupervisedThread"
+        assert isinstance(writer, SupervisedThread), (
+           f"Supplied writer ({str(type(writer))}) for point '{alarm_name}' "
+           f"is not a SupervisedThread"
+        )
         a = GLOBAL_ALARMS[alarm_name]
         a.writer = writer
         return GLOBAL_ALARMS[alarm_name]

@@ -1,12 +1,9 @@
 import unittest
 import jsonpickle
-import ruamel.yaml
-from ruamel.yaml.compat import StringIO
 
 from pyAutomation.DataObjects.PointAnalog import PointAnalog
 from pyAutomation.DataObjects.PointAnalogDual import PointAnalogDual
 from pyAutomation.Supervisory.PointManager import PointManager
-from pyAutomation.Supervisory.PointManager import find_point
 
 
 class TestPointAnalogDual(unittest.TestCase):
@@ -21,7 +18,7 @@ class TestPointAnalogDual(unittest.TestCase):
         )
         point_temperature_1.value = 5.0
 
-        PointManager().load_object(
+        PointManager().add_to_database(
           name="temp_1",
           obj = point_temperature_1
         )
@@ -32,7 +29,7 @@ class TestPointAnalogDual(unittest.TestCase):
           hmi_writeable = False,
           update_period = 1.0,
         )
-        PointManager().load_object(
+        PointManager().add_to_database(
           name="temp_2",
           obj = point_temperature_1
         )
@@ -43,12 +40,10 @@ class TestPointAnalogDual(unittest.TestCase):
             point_1     = point_temperature_1,
             point_2     = point_temperature_2,
         )
-        PointManager().load_object(
+        PointManager().add_to_database(
           name="temp",
           obj = self.point
         )
-
-        PointManager().configure_points()
 
     def test_json_pickle(self):
         pickle_text = jsonpickle.encode(self.point)
@@ -74,32 +69,25 @@ class TestPointAnalogDual(unittest.TestCase):
         )
 
     def test_yaml_pickle(self):
-        yml = ruamel.yaml.YAML(typ='safe', pure=True)
-        yml.default_flow_style = False
-        yml.indent(sequence=4, offset=2)
-
-        yml.register_class(PointAnalogDual)
-        yml.register_class(PointAnalog)
-
-        stream = StringIO()
-        yml.dump(self.point, stream)
-        s=stream.getvalue()
+        s = PointManager().dump_database_to_yaml()
+        PointManager().clear_database
         PointManager().load_points_from_yaml_string(s)
-        unpickled_point = find_point("temp")
+
+        unpickled_point = PointManager().find_point("temp")
 
         self.assertEqual(
-          self.point.description,
-          unpickled_point.description,
+          self.point,
+          unpickled_point,
         )
 
         self.assertEqual(
-          self.point._point_1.description,
-          unpickled_point._point_1.description,
+          self.point._point_1,
+          unpickled_point._point_1,
         )
 
         self.assertEqual(
-          self.point._point_2.description,
-          unpickled_point._point_2.description
+          self.point._point_2,
+          unpickled_point._point_2,
         )
 
 

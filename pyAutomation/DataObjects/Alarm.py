@@ -2,6 +2,7 @@ import datetime
 import dateutil.parser
 import logging
 import time
+from .Observable import Observable
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Dict, List, Any
@@ -12,7 +13,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger('alarms')
 
 
-class Alarm(object):
+class Alarm(Observable):
     """
     Represents an alarm object, which is an event which requires intervention
     to prevent damage.
@@ -30,12 +31,6 @@ class Alarm(object):
     alarm_notifiers = []  # type: List[AlarmNotifier]
 
     alarm_handler = None  # type: AlarmHandler
-
-    # alarm name in the global alarm dict.
-    _name = ""
-
-    description = "Unnamed alarm"  # type: str
-    #  Human friendly description
 
     # The value set by logic to indicating an alarm condition
     _input = False  # type: bool
@@ -57,10 +52,10 @@ class Alarm(object):
     more_info = "None"  # type: str
 
     # The time that the alarm was put into ALARM
-    _activation_time = datetime.datetime.now(datetime.timezone.utc)  # type: datetime.datetime
+    _activation_time = None  # type: datetime.datetime
 
     # The time that the alarm was reset
-    _is_reset_time = datetime.datetime.now(datetime.timezone.utc)  # type: datetime.datetime
+    _is_reset_time = None  # type: datetime.datetime
 
     # The current state of the alarm.
     # Valid states are: OFF, ON_DELAY, ALARM, OFF_DELAY
@@ -107,6 +102,9 @@ class Alarm(object):
                 + str(kw) + "' property of Alarm, property does not exist"
             setattr(self, kw, kwargs[kw])
 
+        self._is_reset_time = datetime.datetime.now()
+        self._activation_time = datetime.datetime.now()
+
     def config(self) -> 'None':
         """
         Sets the name of the alarm as it appears in the global alarm database.
@@ -128,11 +126,21 @@ class Alarm(object):
     def name(self, name):
         """ sets the name of the object with some error checking. """
 
-        assert self._name is not None, (
+        assert self._name is None, (
           f"Alarm has already been assigned a name of {self._name} cannot "
           f"assign a new name of {name}"
         )
         self._name = name
+
+    # description
+    @property
+    def description(self) -> 'str':
+        return self._description
+
+    # description
+    @description.setter
+    def description(self, desc) -> 'None':
+        self._description = desc
 
     @property
     def status_string(self) -> str:
@@ -141,15 +149,12 @@ class Alarm(object):
         an alarm annuciator.
 
         """
-        return "{} {} {}".format(str(
-            self._activation_time),
-          self.description,
-          self.alarm_state)
+        return (f"{str(self._activation_time)} "
+        f" {self.description} { self.alarm_state}")
 
     @property
-    def state(self) -> str:
+    def state(self) -> 'str':
         """ Gets the state of the alarm. """
-
         return self._state
 
     @property
@@ -178,7 +183,7 @@ class Alarm(object):
             return float('inf')
 
     @property
-    def alarm_state(self) -> str:
+    def alarm_state(self) -> 'str':
         """ Gets the human readable state of the alarm. """
         if self.blocked:
             return "BLOCKED"       # ALARM BLOCKED
@@ -199,7 +204,7 @@ class Alarm(object):
         return self._input
 
     @input.setter
-    def input(self, b: 'bool'):
+    def input(self, b: 'bool') -> 'None':
         """ Sets the input value of the alarm. """
         if self._input != b:
             self._input = b
@@ -214,11 +219,11 @@ class Alarm(object):
                 Alarm.alarm_handler.remove_active_alarm(self)
             except ValueError:
                 logger.error(
-                    "Tried to acknowledge " + self.description
-                  + " but it's not an active alarm"
+                    f"Tried to acknowledge {self.description} but it's not an "
+                    f"active alarm"
                 )
 
-    def evaluate(self) -> None:
+    def evaluate(self) -> 'None':
         """
         Evaluates the state of the alarm based upon the input and the time that
         the input was changed. This logic is called whenever the value of the
@@ -235,11 +240,11 @@ class Alarm(object):
             if self.input and self.enabled:
                 if self.on_delay > 0.0:
                     self._state = "ON_DELAY"
-                    logger.debug("Alarm: " + self.name + " OFF->ON_DELAY")
+                    logger.debug(f"Alarm: {self.name} OFF->ON_DELAY")
                     self._timer = time.monotonic()
                     Alarm.alarm_handler.add_alarm_timer(self)
                 else:
-                    logger.debug("Alarm: " + self.name + " OFF->ALARM")
+                    logger.debug(f"Alarm: {self.name} OFF->ALARM")
                     self._state = "NEW_ALARM"
 
         # ON_DELAY is used to prevent an alarm from latching in too quickly.
@@ -248,11 +253,11 @@ class Alarm(object):
             if not self.input or not self.enabled:
                 self._state = "OFF"
                 Alarm.alarm_handler.remove_alarm_timer(self)
-                logger.debug("Alarm: " + self.name + " ON_DELAY->OFF")
+                logger.debug(f"Alarm: {self.name} ON_DELAY->OFF")
             elif time.monotonic() - self._timer >= self.on_delay:
                 self._state = "NEW_ALARM"
                 Alarm.alarm_handler.remove_alarm_timer(self)
-                logger.debug("Alarm: " + self.name + " ON_DELAY->ALARM")
+                logger.debug(f"Alarm: {self.name} ON_DELAY->ALARM")
 
         # NEW_ALARM is a transitory state, setup is done and then the alarm
         # immediately changes to the ALARM state.
@@ -276,10 +281,10 @@ class Alarm(object):
                     self._state = "OFF_DELAY"
                     self._timer = time.monotonic()
                     Alarm.alarm_handler.add_alarm_timer(self)
-                    logger.debug("Alarm: " + self.name + " ALARM->OFF_DELAY")
+                    logger.debug(f"Alarm: {self.name} ALARM->OFF_DELAY")
                 else:
                     self._state = "ALARM_RESET"
-                    logger.debug("Alarm: " + self.name + " ALARM->OFF")
+                    logger.debug(f"Alarm: {self.name} ALARM->OFF")
 
                     # fire off any remote notification if any
                     for notifier in Alarm.alarm_notifiers:
@@ -291,11 +296,11 @@ class Alarm(object):
             if self.input and self.enabled:
                 self._state = "ALARM"
                 Alarm.alarm_handler.remove_alarm_timer(self)
-                logger.debug("Alarm: " + self.name + " OFF_DELAY->ALARM")
+                logger.debug(f"Alarm: {self.name} OFF_DELAY->ALARM")
             elif time.monotonic() - self._timer >= self.off_delay:
                 self._state = "ALARM_RESET"
                 Alarm.alarm_handler.remove_alarm_timer(self)
-                logger.debug("Alarm: " + self.name + " OFF_DELAY->OFF")
+                logger.debug(f"Alarm: {self.name} OFF_DELAY->OFF")
 
                 # fire off any remote notification if any
                 for notifier in Alarm.alarm_notifiers:
@@ -319,34 +324,16 @@ class Alarm(object):
         output state of this alarm.
 
         """
-        assert self.name is not None, \
-          "Alarm: " + self.description + " defined without name."
+        assert self.name is not None, (
+          f"Alarm: {self.description} defined without name."
+        )
 
         for key, callback in self._observers.items():
-            logger.debug("firing callback for " + key + " from " + self.name)
+            logger.debug(f"firing callback for {key} from {self.name}")
             callback(
               name=self.name,
               reason="Alarm timer expired.",
             )
-
-    def add_observer(
-      self,
-      name: 'str',
-      observer: 'Interruptable[str, None]') -> 'None':
-        """
-        Adds an interested routine to this alarm's observer list. This routine
-        will be notified whenever this alarm goes from active to inactive or
-        vise-versa.
-        """
-
-        self._observers.update({name: observer})
-        if self._name is not None:
-            logger.info("Observer: " + name + " added to point " + self.name)
-
-    def del_observer(self, name: 'str') -> 'None':
-        """ Removes an interseted routine from this alarm's observer list. """
-        self._observers.pop(name)
-        logger.info("Observer: " + name + " removed from point " + self.name)
 
     @property
     def active(self):
@@ -377,8 +364,8 @@ class Alarm(object):
         elif value is None:
             self._writer = None
         else:
-            raise Exception("Tried to assign two writer values to "
-              + self.description + " !")
+            raise Exception(f"Tried to assign two writer values to "
+              f"{self.description}!")
 
     @property
     def hmi_object_name(self) -> str:

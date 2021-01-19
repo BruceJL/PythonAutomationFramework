@@ -43,6 +43,35 @@ class AlarmAnalog(Alarm):
 
         super().__init__(**kwargs)
 
+    @property
+    def human_readable_value(self) -> str:
+        return str(self.alarm_value)
+
+    def evaluate_analog(self, value: 'float') -> None:
+        if self.high_low_limit == "HIGH":
+            if not self.input:
+                if value > self.alarm_value:
+                    self.input = True
+            else:
+                if value < self.alarm_value - self.hysteresis:
+                    self.input = False
+
+        elif self.high_low_limit == "LOW":
+            if not self.input:
+                if value < self.alarm_value:
+                    self.input = True
+            else:
+                if value > self.alarm_value + self.hysteresis:
+                    self.input = False
+
+    @property
+    def data_display_width(self):
+        return 8
+
+    @property
+    def hmi_object_name(self) -> str:
+        return "AlarmAnalogWindow"
+
     def __getstate__(self) -> 'Dict[str, Any]':
         """
         Gets a dict representation of the alarm suitable for JSON
@@ -90,35 +119,6 @@ class AlarmAnalog(Alarm):
           high_low_limit=self.high_low_limit,
         ))
         return d
-
-    @property
-    def human_readable_value(self) -> str:
-        return str(self.alarm_value)
-
-    def evaluate_analog(self, value: 'float') -> None:
-        if self.high_low_limit == "HIGH":
-            if not self.input:
-                if value > self.alarm_value:
-                    self.input = True
-            else:
-                if value < self.alarm_value - self.hysteresis:
-                    self.input = False
-
-        elif self.high_low_limit == "LOW":
-            if not self.input:
-                if value < self.alarm_value:
-                    self.input = True
-            else:
-                if value > self.alarm_value + self.hysteresis:
-                    self.input = False
-
-    @property
-    def data_display_width(self):
-        return 8
-
-    @property
-    def hmi_object_name(self) -> str:
-        return "AlarmAnalogWindow"
 
     # used to produce a yaml representation for config storage.
     @classmethod

@@ -1,27 +1,36 @@
 import unittest
 import jsonpickle
-import ruamel.yaml
-from ruamel.yaml.compat import StringIO
 
 from pyAutomation.DataObjects.PointAnalog import PointAnalog
 from pyAutomation.DataObjects.PointDiscrete import PointDiscrete
 from pyAutomation.DataObjects.Alarm import Alarm
 from pyAutomation.DataObjects.AlarmAnalog import AlarmAnalog
 from pyAutomation.DataObjects.ProcessValue import ProcessValue
-from pyAutomation.DataObjects.PointReadOnly import PointReadOnly
+
+from pyAutomation.Supervisory.PointManager import PointManager
+
+test_process_point_name = "test_process_point_name"
 
 
 class TestProcessValue(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(self):
+
         point_pump_water_pressure = PointAnalog(
           description="Pump water pressure",
           u_of_m="psi",
           hmi_writeable=False,
           update_period=0.333333,
+          value = 123.45,
         )
-        point_pump_water_pressure.name = "pump_water_pressure"
-        point_pump_water_pressure.value = 123.45
+
+        # PointManager.add_to_database(
+        #   name = "pump_water_pressure",
+        #   obj = point_pump_water_pressure,
+        # )
+
+        # point_pump_water_pressure.value = 123.45
 
         point_pump_on_water_pressure = PointAnalog(
           description="Pump water pressure on setpoint",
@@ -29,7 +38,11 @@ class TestProcessValue(unittest.TestCase):
           hmi_writeable=True,
           value=115.0,
         )
-        point_pump_on_water_pressure.name = "pump_on_water_pressure"
+
+        # PointManager.add_to_database(
+        #   name = "pump_on_water_pressure",
+        #   obj = point_pump_on_water_pressure,
+        # )
 
         point_pump_off_water_pressure = PointAnalog(
           description="Pump water pressure off setpoint",
@@ -37,7 +50,11 @@ class TestProcessValue(unittest.TestCase):
           hmi_writeable=True,
           value=125.0,
         )
-        point_pump_off_water_pressure.name = "pump_off_water_pressure"
+
+        # PointManager.add_to_database(
+        #   name = "pump_off_water_pressure",
+        #   obj = point_pump_off_water_pressure,
+        # )
 
         alarm_h1_pump_water_pressure = AlarmAnalog(
           description="Pump pressure H1",
@@ -52,7 +69,11 @@ class TestProcessValue(unittest.TestCase):
             "the H1 level. The H1 level provides a safety mechanism and "
             "prevents the pump from overpressuring the system.",
         )
-        alarm_h1_pump_water_pressure.name = "h1_pump_water_pressure"
+
+        # PointManager.add_to_database(
+        #   name = "h1_pump_water_pressure",
+        #   obj = alarm_h1_pump_water_pressure,
+        # )
 
         alarm_h2_pump_water_pressure = AlarmAnalog(
           description="Pump pressure H2",
@@ -69,7 +90,11 @@ class TestProcessValue(unittest.TestCase):
             "be bled to prevent overpressure and prevent thermal failure of the"
             "pump by allowing water to circulate.",
         )
-        alarm_h2_pump_water_pressure.name = "h2_pump_water_pressure"
+
+        # PointManager.add_to_database(
+        #   name = "h2_pump_water_pressure",
+        #   obj = alarm_h2_pump_water_pressure,
+        # )
 
         alarm_l1_pump_water_pressure = AlarmAnalog(
           description="Pump pressure L1",
@@ -82,7 +107,11 @@ class TestProcessValue(unittest.TestCase):
           more_info="The pump may have failed or a leak may have developed on "
             "the high pressure side",
         )
-        alarm_l1_pump_water_pressure.name = "l1_pump_water_pressure"
+
+        # PointManager.add_to_database(
+        #   name = "l1_pump_water_pressure",
+        #   obj = alarm_l1_pump_water_pressure,
+        # )
 
         alarm_l2_pump_water_pressure = AlarmAnalog(
           description="Pump pressure L2",
@@ -95,7 +124,11 @@ class TestProcessValue(unittest.TestCase):
           more_info="The pump may have failed or a leak may have developed on "
             "the high pressure side",
         )
-        alarm_l1_pump_water_pressure.name = "l2_pump_water_pressure"
+
+        # PointManager.add_to_database(
+        #   name = "l2_pump_water_pressure",
+        #   obj = alarm_l2_pump_water_pressure,
+        # )
 
         # Logic driven pump related alarms.
         alarm_pump_runtime_fault = Alarm(
@@ -107,7 +140,10 @@ class TestProcessValue(unittest.TestCase):
           more_info="The following may be happened: pump may be run dry, "
             "failing, or a leak may have developed.",
         )
-        alarm_pump_runtime_fault.name  = "pump_runtime_fault"
+        PointManager.add_to_database(
+          name = "pump_runtime_fault",
+          obj = alarm_pump_runtime_fault,
+        )
 
         # Active pressure decay constant. Measures how fast the pressure in the
         # accumlator tank drops when the valves are open. Too much indicates a
@@ -117,7 +153,10 @@ class TestProcessValue(unittest.TestCase):
           u_of_m="%",
           hmi_writeable=False,
         )
-        point_active_pressure_decay.name = "active_pressure_decay"
+        # PointManager.add_to_database(
+        #   name = "active_pressure_decay",
+        #   obj = point_active_pressure_decay,
+        # )
 
         alarm_h1_active_pressure_decay = AlarmAnalog(
           description="Pressure decay high - misting clog detected",
@@ -130,7 +169,10 @@ class TestProcessValue(unittest.TestCase):
           more_info="The system has detected that the pressure accumulator is "
             + "not draing at the proper rate.",
         )
-        alarm_h1_active_pressure_decay.name = "h1_active_pressure_decay"
+        # PointManager.add_to_database(
+        #   name = "active_pressure_decay",
+        #   obj = alarm_h1_active_pressure_decay,
+        # )
 
         alarm_l1_active_pressure_decay = AlarmAnalog(
           description="Pressure decay low - misting leak",
@@ -143,16 +185,21 @@ class TestProcessValue(unittest.TestCase):
           more_info="The system has detected that the pressure accumulator is "
           "not draining at the proper rate."
         )
-        alarm_l1_active_pressure_decay.name = "l1_active_pressure_decay"
+        # PointManager.add_to_database(
+        #   name = "l1_active_pressure_decay",
+        #   obj = alarm_l1_active_pressure_decay,
+        # )
 
         process_active_pressure_decay = \
           ProcessValue(point_active_pressure_decay)
         process_active_pressure_decay.high_display_limit = 1.0
         process_active_pressure_decay.low_display_limit = 0.0
+
         process_active_pressure_decay.add_alarm(
           "H1",
           alarm_h1_active_pressure_decay
         )
+
         process_active_pressure_decay.add_alarm(
           "L1",
           alarm_l1_active_pressure_decay
@@ -166,7 +213,11 @@ class TestProcessValue(unittest.TestCase):
           u_of_m="%",
           hmi_writeable=False,
         )
-        point_static_pressure_decay.name = "static_pressure_decay"
+
+        # PointManager.add_to_database(
+        #   name = "static_pressure_decay",
+        #   obj = point_static_pressure_decay,
+        # )
 
         alarm_l1_static_pressure_decay = AlarmAnalog(
           description="Pressure decay low - accumulator leak",
@@ -176,7 +227,11 @@ class TestProcessValue(unittest.TestCase):
           off_delay=180,
           high_low_limit="LOW",
         )
-        alarm_l1_static_pressure_decay.name = "l1_static_pressure_decay"
+
+        # PointManager.add_to_database(
+        #   name = "l1_static_pressure_decay",
+        #   obj = alarm_l1_static_pressure_decay,
+        # )
 
         process_static_pressure_decay = ProcessValue(
           point_static_pressure_decay
@@ -185,8 +240,13 @@ class TestProcessValue(unittest.TestCase):
         process_static_pressure_decay.low_display_limit = 0.0
         process_static_pressure_decay.add_alarm(
           "L1",
-          alarm_l1_active_pressure_decay
+          alarm_l1_static_pressure_decay
         )
+
+        # PointManager.add_to_database(
+        #   name = "static_pressure_decay",
+        #   obj = process_static_pressure_decay,
+        # )
 
         point_run_pump = PointDiscrete(
           description="Pump",
@@ -194,7 +254,10 @@ class TestProcessValue(unittest.TestCase):
           off_state_description="Off",
           hmi_writeable=False,
         )
-        point_run_pump.name = "run_pump"
+        # PointManager.add_to_database(
+        #   name = "run_pump",
+        #   obj = point_run_pump,
+        # )
 
         # Pump ProcessValue assembly.
         self.point = ProcessValue(point_pump_water_pressure)
@@ -203,10 +266,12 @@ class TestProcessValue(unittest.TestCase):
         self.point.add_control_point("cut_in", point_pump_on_water_pressure)
         self.point.add_control_point("cut_out", point_pump_off_water_pressure)
         self.point.add_related_point("run", point_run_pump)
+
         self.point.add_related_point(
           "decay_static",
           process_static_pressure_decay,
         )
+
         self.point.add_related_point(
           "decay_active",
           process_active_pressure_decay,
@@ -216,31 +281,28 @@ class TestProcessValue(unittest.TestCase):
         self.point.add_alarm("L1", alarm_l1_pump_water_pressure)
         self.point.add_alarm("L2", alarm_l2_pump_water_pressure)
 
+        PointManager.add_to_database(
+          name = test_process_point_name,
+          obj = self.point,
+        )
+
     def test_json_pickle(self):
         pickle_text = jsonpickle.encode(self.point)
         unpickled_point = jsonpickle.decode(pickle_text)
         self.assertEqual(self.point.value, unpickled_point.value)
 
     def test_yaml_pickle(self):
-        yml = ruamel.yaml.YAML(typ='safe', pure=True)
-        yml.default_flow_style = False
-        yml.indent(sequence=4, offset=2)
+        s = PointManager().dump_database_to_yaml()
+        # print (f"YAML:\n {s}")
+        PointManager().clear_database
+        PointManager().load_points_from_yaml_string(s)
 
-        yml.register_class(ProcessValue)
-        yml.register_class(PointAnalog)
-        yml.register_class(Alarm)
-        yml.register_class(AlarmAnalog)
-        yml.register_class(PointDiscrete)
-        yml.register_class(PointReadOnly)
+        PointManager().find_point(test_process_point_name)
 
-        stream = StringIO()
-        yml.dump(self.point, stream)
-        s=stream.getvalue()
-        # print(s)
-        unpickled_point = yml.load(s)
-        unpickled_point.config("test_scaled_point")
+        # Can't do the assertEquals, as it tests the value and that doesn't
+        # get included in the yaml dict.
 
-        self.assertEqual(self.point.description, unpickled_point.description)
+        # self.assertEqual(self.point, unpickled_point)
 
 
 if __name__ == '__main__':
