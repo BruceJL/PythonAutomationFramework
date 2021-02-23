@@ -55,7 +55,7 @@ class I2cDriver(SupervisedThread):
                       data=config[device],
                       point_handler=device_instance,
                       target_name=device,
-                      supervised_thread=self,
+                      interruptable=self,
                     )
 
                     # Populate module parameters.

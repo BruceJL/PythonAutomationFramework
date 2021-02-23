@@ -15,9 +15,11 @@ import ruamel
 from pyAutomation.DataObjects.Alarm import Alarm
 from pyAutomation.Supervisory.AlarmHandler import AlarmHandler
 from pyAutomation.Supervisory.SupervisedThread import SupervisedThread
+from pyAutomation.Supervisory.Interruptable import Interruptable
 from pyAutomation.Supervisory.PointManager import PointManager
 from pyAutomation.Supervisory.AlarmNotifier import AlarmNotifier
 from pyAutomation.Supervisory.RpcServer import RpcServer
+
 
 sys.path.insert(0, os.getcwd())
 
@@ -31,12 +33,13 @@ logger_supervisory = None
 
 class Supervisor(object):
 
+    threads = []  # type: 'List[Interruptable]'
+
     def __init__(
       self,
       logic_yaml_files: 'List[str]',
-      point_database_yaml_files: 'List[str]') -> None:
-
-        self.threads = []  # type: 'List[SupervisedThread]'
+      point_database_yaml_files: 'List[str]'
+    ) -> 'None':
 
         yml = ruamel.yaml.YAML(typ='safe', pure=True)
         yml.default_flow_style = False
@@ -52,8 +55,8 @@ class Supervisor(object):
         for logger in cfg[section]:
             # self.logger.info("attempting to create logger: " + logger)
             # setup the device logger
-            l = logging.getLogger(logger)
-            l.setLevel(cfg[section][logger]['level'])
+            logger_obj = logging.getLogger(logger)
+            logger_obj.setLevel(cfg[section][logger]['level'])
             fh = RotatingFileHandler(
               filename=cfg[section][logger]['file'],
               maxBytes=cfg[section][logger]['maxBytes'],
@@ -62,7 +65,7 @@ class Supervisor(object):
               delay=False,
             )
             fh.setFormatter(formatter)
-            l.addHandler(fh)
+            logger_obj.addHandler(fh)
 
         self.logger = logging.getLogger('supervisory')
         assert self.logger is not None, \
@@ -71,20 +74,20 @@ class Supervisor(object):
 
         # load the point database(s).
         for file in point_database_yaml_files:
-            self.logger.info("loading file: %s", file)
+            self.logger.info(f"loading file: {file}")
             PointManager().load_points_from_yaml_file(file)
 
         # Setup the alarm notifiers.
         section = "AlarmNotifiers"
         for notifier in cfg[section]:
-            self.logger.info("attempting import AlarmNotifier %s ", notifier)
+            self.logger.info(f"attempting import AlarmNotifier {notifier}")
 
             imported_module = import_module(
               cfg[section][notifier]["module"],
               cfg[section][notifier]["package"])
 
             assert 'logger' in cfg[section][notifier], \
-                "No logger entry defined for " + notifier
+                f"No logger entry defined for {notifier}"
             logger = cfg[section][notifier]["logger"]
 
             for i in dir(imported_module):
@@ -99,8 +102,8 @@ class Supervisor(object):
                       name=notifier,
                       logger=logger)
                     self.logger.info(
-                      "adding %s %s to alarm notifiers list",
-                      imported_module.__name__, attribute)
+                      f"adding {imported_module.__name__} {attribute} to "
+                      "alarm notifiers list")
 
                     Alarm.alarm_notifiers.append(concrete_notifier)
 
@@ -126,8 +129,7 @@ class Supervisor(object):
         section = 'SupervisedThreads'
         for thread_name in cfg[section]:
             self.logger.info(
-              "attempting to import {}".format(
-                cfg[section][thread_name]["module"]))
+              f"attempting to import {cfg[section][thread_name]['module']}")
 
             imported_module = import_module(
               cfg[section][thread_name]["module"],
@@ -148,14 +150,14 @@ class Supervisor(object):
                       logger=cfg[section][thread_name]["logger"]
                     )
 
-                    self.logger.info("added %s %s", thread_name, attribute)
+                    self.logger.info(f"added {thread_name} {attribute}")
 
                     # Populate module points
                     PointManager().assign_points(
                       data=cfg[section][thread_name],
                       point_handler=supervised_thread,
                       target_name=thread_name,
-                      supervised_thread=supervised_thread,
+                      interruptable=supervised_thread,
                     )
 
                     # Populate module assign_parameters
@@ -177,9 +179,9 @@ class Supervisor(object):
                     self.threads.append(supervised_thread)
 
         # Fire up all the threads.
-        for i in self.threads:
-            self.logger.info("starting: %s", i.name)
-            i.start()
+        for thread in self.threads:
+            self.logger.info(f"starting: {thread.name}")
+            thread.start()
 
         # Start the point database server
         rpc_object = RpcServer()

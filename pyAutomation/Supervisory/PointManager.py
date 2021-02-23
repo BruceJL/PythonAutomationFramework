@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 
     from pyAutomation.Supervisory.PointHandler import PointHandler
     from pyAutomation.Supervisory.SupervisedThread import SupervisedThread
+    from pyAutomation.Supervisory.Interruptable import Interruptable
     from logging import Logger
 
 GLOBAL_POINTS = {}  # type: Dict[str, PointAbstract]
@@ -92,6 +93,8 @@ class PointManager:
       name: 'str',
       obj: 'Any',
     ):
+        ''' Add a point to the global point database '''
+
         if isinstance(
           obj, (
             PointAbstract,
@@ -117,19 +120,19 @@ class PointManager:
 
     @staticmethod
     def assign_points(
-      data: 'Dict',
+      data: 'Dict[str, Any]',
       point_handler: 'PointHandler',
       target_name: 'str',
-      supervised_thread: 'SupervisedThread',
+      interruptable: 'Interruptable',
     ) -> 'None':
         if 'points' in data:
             for point_name in data['points']:
                 if 'name' in data['points'][point_name]:
                     db_name = data['points'][point_name]['name']
                     logger.info(
-                      "assigning database point %s"
-                      + " to point: %s in module: %s", db_name, point_name,
-                      target_name)
+                      f"assigning database point {db_name}"
+                      f" to point: {point_name} in module: {target_name}"
+                    )
                     if 'access' in data['points'][point_name]:
                         db_rw = data['points'][point_name]['access']
                     else:
@@ -140,7 +143,7 @@ class PointManager:
                       object_point_name=point_name,
                       database_point_name=db_name,
                       db_rw=db_rw,
-                      supervised_thread=supervised_thread,
+                      interruptable=interruptable,
                       extra_data=data['points'][point_name]
                     )
                 else:
@@ -154,7 +157,7 @@ class PointManager:
       object_point_name: 'str',
       database_point_name: 'str',
       db_rw: 'str',
-      supervised_thread: 'SupervisedThread',
+      interruptable: 'Interruptable',
       extra_data: 'Dict[str, str]',
     ) -> 'None':
         ''' Assigns a point to a PointHandler
@@ -198,7 +201,7 @@ class PointManager:
                   name=object_point_name,
                   point=__get_point_rw(
                     point_name=database_point_name,
-                    supervised_thread=supervised_thread,
+                    interruptable=interruptable,
                   ),
                   access=rw,
                   extra_data=extra_data,
@@ -224,7 +227,7 @@ class PointManager:
                 point_handler.__dict__[object_point_name] = \
                   __get_alarm_rw(
                     alarm_name=database_point_name,
-                    writer=supervised_thread,
+                    writer=interruptable,
                   )
 
             elif 'ro' == rw:
@@ -253,7 +256,7 @@ class PointManager:
                   name=database_point_name,
                   point=__get_point_rw(
                     point_name=database_point_name,
-                    supervised_thread=supervised_thread,
+                    interruptable=interruptable,
                   ),
                   access='rw',
                 )
@@ -323,14 +326,14 @@ class PointManager:
 
 def __get_point_rw(
   point_name: 'str',
-  supervised_thread: 'SupervisedThread',
+  interruptable: 'Interruptable',
 ) -> 'PointAbstract':
     if 'None' != point_name:
-        p = find_point(point_name).readwrite_object
-        assert isinstance(supervised_thread, SupervisedThread), (
-           f"Supplied writer ({str(type(supervised_thread))}) for point"
-           f"'{point_name}' is not a SupervisedThread")
-        p.writer = supervised_thread
+        p = PointManager().find_point(point_name).readwrite_object
+        assert isinstance(interruptable, Interruptable), (
+           f"Supplied writer ({str(type(interruptable))}) for point"
+           f"'{point_name}' is not an Interruptable")
+        p.writer = interruptable
         return p
 
 

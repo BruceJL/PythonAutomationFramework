@@ -1,23 +1,24 @@
 from abc import ABC
 from pyAutomation.DataObjects.Point import Point
+from pyAutomation.Supervisory.Interruptable import Interruptable
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Dict
+    from typing import Dict, Any
 
 
-class PointHandler(ABC):
+class PointHandler(Interruptable, ABC):
     """This class is inherited by any class that expected to get assigned
     points from the point database. The point database will interrogate
     the class with these methods."""
 
     @property
     def _points_list(self):
-        raise NotImplementedError
+        pass
 
     @property
     def name(self):
-        raise NotImplementedError
+        pass
 
     def get_point_access(self, name: 'str') -> 'str':
         assert self.point_name_valid(name), \
@@ -42,11 +43,11 @@ class PointHandler(ABC):
       extra_data: 'Dict[str, str]',
     ) -> None:
         assert name in self._points_list, \
-          "{} is not a point in this {}.".format(name, self.name)
+          f"{name} is not a point in this {self.name}."
 
         assert type(point) is self._points_list[name][type], \
-          "Wrong type of point. Expected {}, got {}".format(
-            self._points_list[name][type], type(point))
+          f"Wrong type of point. Expected {self._points_list[name][type]},"
+          f"got {type(point)}"
 
         assert access is not None \
           or self._points_list[name]['access'] is not None, \
@@ -56,3 +57,6 @@ class PointHandler(ABC):
 
     def point_name_valid(self, name: 'str') -> 'bool':
         return name in self._points_list
+
+    def interrupt(self, name: 'str', reason: 'Any') -> 'None':
+        self._interrupt(name, reason)

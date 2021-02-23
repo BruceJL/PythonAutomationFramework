@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import logging
 
 from .PointReadOnlyAbstract import PointReadOnlyAbstract
+from pyAutomation.Supervisory.Interruptable import Interruptable
 
 logger = logging.getLogger('controller')
 
@@ -45,6 +46,8 @@ class PointAbstract(PointReadOnlyAbstract, ABC):
 
     # How often the point value should be refreshed.
     update_period = None  # type: timedelta
+
+    _writer = None  # type: Interruptable
 
     _keywords = [
       'description',
@@ -89,7 +92,6 @@ class PointAbstract(PointReadOnlyAbstract, ABC):
     @property
     def value(self) -> 'Any':
         return self._value
-
 
     @value.setter
     def value(self, v: 'Any'):
@@ -142,11 +144,11 @@ class PointAbstract(PointReadOnlyAbstract, ABC):
 
     # Get and set the owner process
     @property
-    def writer(self):
-        return super().writer
+    def writer(self) -> 'Interruptable':
+        return self._writer
 
     @writer.setter
-    def writer(self, w):
+    def writer(self, w: 'Interruptable'):
         assert w is not None,\
            "Tried to assign a null writer to " + self.description
 

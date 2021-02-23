@@ -26,7 +26,7 @@ class SupervisedThread(Interruptable, ABC):
         self._logger = logging.getLogger(logger)
 
         self.condition = threading.Condition()
-        self.interrupt_request_deque = deque()
+        self.interrupt_request_deque = deque()  # type: deque
         self.thread = threading.Thread(target=self.thread_loop, args=(loop,))
         self.type = "Control"
 

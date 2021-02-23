@@ -1,0 +1,23 @@
+
+points:
+  modbus_integer_value:
+    command: INPUT # Command 04
+    drop: 01
+    address: 3
+    datatype: int16-big-endian
+    name: point_discrete_1
+    type: PointAnalog
+    access: ro
+  modbus_boolean_value:
+    command: COIL # Command 01
+    drop: 01
+    address: 4
+    name: point_discrete_2
+    access: rw
+  modbus_boolean_in_int_value:
+    command: HOLDING # Command 03
+    drop: 01
+    address: 1235.2
+    name: client_recieved_modbus_boolean_in_int
+    datatype: bit-in-word
+    access: ro

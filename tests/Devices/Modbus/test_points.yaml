@@ -1,0 +1,55 @@
+points:
+  point_discrete_1: !PointDiscrete
+    description: Discrete point 1
+    hmi_writeable: false
+    off_state_description: off
+    on_state_description: on
+    requestable: true
+    retentive: false
+    update_period: null
+
+  point_discrete_2: !PointDiscrete
+    description: Discrete point 2
+    hmi_writeable: false
+    off_state_description: off
+    on_state_description: on
+    requestable: true
+    retentive: false
+    update_period: null
+
+  point_discrete_3: !PointDiscrete
+    description: Discrete point 3
+    hmi_writeable: false
+    off_state_description: off
+    on_state_description: on
+    requestable: true
+    retentive: false
+    update_period: null
+
+  point_discrete_4: !PointDiscrete
+    description: Discrete point 4
+    hmi_writeable: false
+    off_state_description: off
+    on_state_description: on
+    requestable: true
+    retentive: false
+    update_period: null
+
+  point_analog_1: !PointAnalog
+    description: Analog point 1
+    hmi_writeable: false
+    requestable: true
+    retentive: true
+    u_of_m: 'mm/min'
+    update_period: null # seconds
+    value: 20.0
+
+  point_analog_2: !PointAnalog
+    description: Analog point 2
+    hmi_writeable: false
+    requestable: true
+    retentive: true
+    u_of_m: 'mm/min'
+    update_period: null # seconds
+    value: 20.0
+
