@@ -4,14 +4,14 @@ import asyncio
 from typing import TYPE_CHECKING
 
 from pyAutomation.DataObjects.PointAnalogReadOnlyAbstract import \
-  valid_data_types
+  data_formats
 from pyAutomation.Supervisory.SupervisedThread import SupervisedThread
 from pyAutomation.Supervisory.PointHandler import PointHandler
 from pyAutomation.Devices.Modbus.CommandModbus import \
   CommandModbus, makeCommandObjects
 
 if TYPE_CHECKING:
-    from typing import List, Dict
+    from typing import List, Dict, Any
 
 valid_commands = [
   'COIL',
@@ -35,7 +35,7 @@ class ModbusCient(SupervisedThread, PointHandler):
     # data types are used to interpret the data in HOLDING (03) or INPUT (04)
     # registers. COIL (01) and DISCRETE (02) registers are always bits.
 
-    _valid_data_types = 'sub-bit' + valid_data_types  # type: List
+    _data_formats = 'sub-bit' + data_formats  # type: List
 
     def __init__(self, name, logger):
         self.state = "DISCONNECTED"  # type: str
@@ -45,7 +45,7 @@ class ModbusCient(SupervisedThread, PointHandler):
         self.min_sleep_time = timedelta(milliseconds=10)
         self.period = None
         self.point_data = []  # type: List[Dict[str, Any]]
-        self.modbus_commands = []  # type: List[ModbusCommand]
+        self.modbus_commands = []  # type: List[CommandModbus]
 
         # SupervisedThread __init__ call
         super().__init__(
@@ -62,20 +62,18 @@ class ModbusCient(SupervisedThread, PointHandler):
         minimum number of requests"""
 
         self.logger.debug("Entering function")
-        self.modbus_commands = []  # type: List[ModbusCommand]
 
-        dicts = dict[str, List[Any]]
         for point in self.point_data:
             key = point['drop'] + '-' + point['command']
             if key not in dicts:
-                dicts[key] = []
-            dicts[key].append(point)
+                data[key] = []
+            data[key].append(point)
 
             # Become an observer to any read-only point.
             if point.readonly:
                 point.add_observer(self.name, self.interrupt)
 
-        for group in dicts.values():
+        for group in data.values():
             cmds = makeCommandObjects(group)
             for cmd in cmds:
                 self.modbus_commands.append(cmd)
@@ -127,7 +125,7 @@ class ModbusCient(SupervisedThread, PointHandler):
 
             if next_update < datetime.now():
                 yield next_update
-                continue # restart the while loop to preseve the stream.
+                continue  # restart the while loop to preseve the stream.
 
             # This deals with the read/write points that are owned by this
             # process.
@@ -135,7 +133,7 @@ class ModbusCient(SupervisedThread, PointHandler):
             return_data = asyncio.run(self.do_io(data))
             active_modbus_command.processReply(return_data)
 
-    async def do_io(data : 'bytearray') -> 'bytearray':
+    async def do_io(self, data: 'bytearray') -> 'bytearray':
         """ Run the I/O routine asyncronously."""
         # Send the modbus query
         writer.write(data)

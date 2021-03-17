@@ -1,9 +1,9 @@
 import logging
 from typing import TYPE_CHECKING
 from .PointAbstract import PointAbstract
+from .PointReadOnly import PointReadOnly
 
 if TYPE_CHECKING:
-    from .PointReadOnly import PointReadOnly
     from typing import List, Dict, Any
 
 logger = logging.getLogger('controller')
@@ -21,6 +21,10 @@ class PointDiscrete(PointAbstract):
     def keywords(self) -> 'List[str]':
         return super().keywords + \
           ['on_state_description', 'off_state_description']
+
+    @property
+    def data_formats(self) -> 'List[str]':
+        return ['boolean']
 
     # value accessed through HMI
     @property

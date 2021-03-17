@@ -1,10 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Union
 from datetime import datetime, timedelta
 import logging
 
 from .PointReadOnlyAbstract import PointReadOnlyAbstract
 from pyAutomation.Supervisory.Interruptable import Interruptable
+from pyAutomation.Supervisory.ConfigurationException import \
+    ConfigurationException
 
 logger = logging.getLogger('controller')
 
@@ -45,9 +47,11 @@ class PointAbstract(PointReadOnlyAbstract, ABC):
     write_request = None  # type: object
 
     # How often the point value should be refreshed.
-    update_period = None  # type: timedelta
+    update_period = None  # type: Union[timedelta, None]
 
     _writer = None  # type: Interruptable
+
+    _name = None  # type: str
 
     _keywords = [
       'description',
@@ -116,13 +120,13 @@ class PointAbstract(PointReadOnlyAbstract, ABC):
 
                     if self._writer is not None:
                         assert self.name is not None, (
-                          f'{self.description} attempted callback without '
-                          f'identifer.'
+                          f'"{self.description}" attempted callback without '
+                          f'a writer object.'
                         )
 
                         assert self.name != '', (
                           f'{self.description} attempted callback without '
-                          f'identifer.'
+                          f'an identifer.'
                         )
 
                         for callback in self._observers.values():
@@ -216,10 +220,14 @@ class PointAbstract(PointReadOnlyAbstract, ABC):
     # name
     @property
     def name(self) -> 'str':
-        return super().name
+        return self._name
 
     @name.setter
     def name(self, name: 'str') -> 'None':
+        if self._name is not None:
+            raise ConfigurationException(
+              f"Attempted to overwrite the name of '{self._name}' with '{name}'"
+            )
         self._name = name
 
     # Used to access point quality.

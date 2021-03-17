@@ -1,24 +1,25 @@
 from pyAutomation.Supervisory.SupervisedThread import SupervisedThread
-from pyAutomation.Supervisory.PointHandler import PointHandler
+from pyAutomation.Supervisory.PointHandlerLogic import PointHandlerLogic
 import datetime
+from typing import Union
 
 
 # simple pump controller that
 
-class TankSimulator(SupervisedThread, PointHandler):
+class TankSimulator(SupervisedThread, PointHandlerLogic):
 
     _points_list = {
-      'point_liquid_level':          {'type': 'ProcessValue',  'access': 'rw'},
-      'point_fill_rate':             {'type': 'PointAnalog',   'access': 'rw'},
-      'point_run_pump_1':            {'type': 'PointDiscrete', 'access': 'ro'},
-      'point_pump_1_rate_drain_rate':{'type': 'PointAnalog',   'access': 'rw'},
-      'point_run_pump_2':            {'type': 'PointDiscrete', 'access': 'ro'},
-      'point_pump_2_rate_drain_rate':{'type': 'PointAnalog',   'access': 'rw'},
+      'point_liquid_level': {'type': 'ProcessValue', 'access': 'rw'},
+      'point_fill_rate': {'type': 'PointAnalog', 'access': 'rw'},
+      'point_run_pump_1': {'type': 'PointDiscrete', 'access': 'ro'},
+      'point_pump_1_rate_drain_rate': {'type': 'PointAnalog', 'access': 'rw'},
+      'point_run_pump_2': {'type': 'PointDiscrete', 'access': 'ro'},
+      'point_pump_2_rate_drain_rate': {'type': 'PointAnalog', 'access': 'rw'},
     }
 
     def __init__(self, name, logger):
         self.level = 0.0
-        self.period = 0.5 # Run the loop every 0.5 seconds.
+        self.period = 0.5  # Run the loop every 0.5 seconds.
         self.last_time = datetime.datetime.now()
 
         super().__init__(
@@ -27,12 +28,12 @@ class TankSimulator(SupervisedThread, PointHandler):
             period=self.period,
             logger=logger)
 
-    def config(self, config: dict):
+    def config(self, config: 'dict'):
         # register interest in points that will cause the routine to run.
         self.point_run_pump_1.add_observer(self.name, self.interrupt)
         self.point_run_pump_2.add_observer(self.name, self.interrupt)
 
-    def loop(self) -> float:
+    def loop(self) -> 'Union[float, None]':
 
         # Just blindly accept the drain and fill rates for the pumps
         # should probably do some bounds checking here, but you get the
@@ -43,15 +44,18 @@ class TankSimulator(SupervisedThread, PointHandler):
             self.point_fill_rate.request_value = None
 
         if(self.point_pump_1_rate_drain_rate.request_value is not None):
-            self.point_pump_1_rate_drain_rate.value = self.point_pump_1_rate_drain_rate.request_value
+            self.point_pump_1_rate_drain_rate.value = \
+              self.point_pump_1_rate_drain_rate.request_value
             self.point_pump_1_rate_drain_rate.request_value = None
 
         if(self.point_pump_2_rate_drain_rate.request_value is not None):
-            self.point_pump_2_rate_drain_rate.value = self.point_pump_2_rate_drain_rate.request_value
+            self.point_pump_2_rate_drain_rate.value = \
+              self.point_pump_2_rate_drain_rate.request_value
             self.point_pump_2_rate_drain_rate.request_value = None
 
         now = datetime.datetime.now()
-        time_delta = datetime.timedelta.total_seconds(now - self.last_time)/60.0
+        time_delta = \
+          datetime.timedelta.total_seconds(now - self.last_time) / 60.0
         self.last_time = now
 
         # --------------------------------------------------
@@ -64,7 +68,7 @@ class TankSimulator(SupervisedThread, PointHandler):
             self.point_liquid_level.value -= \
               self.point_pump_1_rate_drain_rate.value * time_delta
 
-        if self.point_run_pump_2.value  :
+        if self.point_run_pump_2.value:
             self.point_liquid_level.value -= \
               self.point_pump_2_rate_drain_rate.value * time_delta
 

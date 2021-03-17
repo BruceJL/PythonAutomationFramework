@@ -34,13 +34,13 @@ class SupervisedThread(Interruptable, ABC):
         """Starts the thread wrapped by this object."""
         self.thread.start()
 
-    def _get_name(self):
+    @property
+    def name(self) -> 'str':
         return self._name
 
-    def _set_name(self, name):
+    @name.setter
+    def name(self, name) -> 'None':
         self._name = name
-
-    name = property(_get_name, _set_name)
 
     def _get_logger(self):
         return self._logger
@@ -76,7 +76,9 @@ class SupervisedThread(Interruptable, ABC):
         This is used when points are written to by processes and the new data
         needs to be propagated to all threads that consume that point. As this
         method will be called by the program logic that updated the point, it
-        must block as little as possible. """
+        must block as little as possible.
+
+        """
 
         assert self.name is not None, \
           'Thread has no name defined.'
@@ -97,7 +99,9 @@ class SupervisedThread(Interruptable, ABC):
         """ setup the Supervised thread based upon the configuration data
         supplied in the config section of the yaml file for this module.
         Config data is free form allowing for more complex structures than
-        the parameters section."""
+        the parameters section.
+
+        """
 
     @abstractmethod
     def loop(self) -> 'float':
@@ -105,7 +109,9 @@ class SupervisedThread(Interruptable, ABC):
 
     def thread_loop(self, loop, ):
         """ function that wraps the designer built loop and ensures that it is
-        executed at the appropriate times. """
+        executed at the appropriate times.
+
+        """
 
         try:
             self.logger.info("Starting thread_loop for: %s", self.name)

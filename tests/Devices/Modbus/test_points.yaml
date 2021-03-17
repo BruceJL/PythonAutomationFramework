@@ -1,3 +1,4 @@
+---
 points:
   point_discrete_1: !PointDiscrete
     description: Discrete point 1

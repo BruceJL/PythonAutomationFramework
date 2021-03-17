@@ -15,6 +15,9 @@ from pyAutomation.DataObjects.PointDiscrete import PointDiscrete
 from pyAutomation.DataObjects.PointEnumeration import PointEnumeration
 from pyAutomation.DataObjects.Alarm import Alarm
 from pyAutomation.DataObjects.AlarmAnalog import AlarmAnalog
+from pyAutomation.Supervisory.Interruptable import Interruptable
+from pyAutomation.Supervisory.ConfigurationException import \
+  ConfigurationException
 
 if TYPE_CHECKING:
     from typing import Dict, Any
@@ -23,7 +26,6 @@ if TYPE_CHECKING:
 
     from pyAutomation.Supervisory.PointHandler import PointHandler
     from pyAutomation.Supervisory.SupervisedThread import SupervisedThread
-    from pyAutomation.Supervisory.Interruptable import Interruptable
     from logging import Logger
 
 GLOBAL_POINTS = {}  # type: Dict[str, PointAbstract]
@@ -54,13 +56,26 @@ class PointManager:
 
     @staticmethod
     def load_points_from_yaml_file(file: 'str') -> 'None':
-        ''' Loads points from a yaml file. '''
+        """ Loads points from a yaml file.
+
+        Parameters:
+        file (str): fully qualified path of file to load.
+
+        Returns:
+        None
+
+        """
 
         path = Path(file)
         data = None
         with path.open() as fp:
             data = yml.load(fp)
-        PointManager().load_points_from_yaml_string(data)
+
+        for name, obj in data['points'].items():
+            PointManager().add_to_database(
+              name=name,
+              obj=obj,
+            )
 
     @staticmethod
     def load_points_from_yaml_string(string: 'str',) -> 'None':
@@ -140,7 +155,7 @@ class PointManager:
 
                     PointManager().assign_point(
                       point_handler=point_handler,
-                      object_point_name=point_name,
+                      point_handler_point_name=point_name,
                       database_point_name=db_name,
                       db_rw=db_rw,
                       interruptable=interruptable,
@@ -148,36 +163,53 @@ class PointManager:
                     )
                 else:
                     logger.info(
-                      "skipping device: %s point: %s as"
-                      + " it is unused", target_name, point_name)
+                      f"skipping device: {target_name} point: {point_name} as"
+                      " it is unused"
+                    )
 
     @staticmethod
     def assign_point(
       point_handler: 'PointHandler',
-      object_point_name: 'str',
+      point_handler_point_name: 'str',
       database_point_name: 'str',
       db_rw: 'str',
       interruptable: 'Interruptable',
       extra_data: 'Dict[str, str]',
     ) -> 'None':
         ''' Assigns a point to a PointHandler
+            maps the point in the PointHandler "point_handler_point_name" to the
+            point in the database "database_point_name".
+
+            Verifies that the r/w property agrees if possible and places the
+            PointHandler in the points interrupt queue.
+
+            Provides the ability to supply a dict with extra information about
+            how the point is to be assigned. May continue information such as
+            mapping to communications systems.
+
         '''
 
-        assert point_handler.point_name_valid(object_point_name), (
-          f"{object_point_name} is not a valid point for: "
+        # test to make sure that the point_handler will accept the name of the
+        # point being assigned.
+        assert point_handler.point_name_valid(point_handler_point_name), (
+          f"{point_handler_point_name} is not a valid point for: "
           f"{point_handler.name}"
         )
 
         # Determine the access level for this point.
-        logic_rw = point_handler.get_point_access(object_point_name)
-        assert logic_rw is not None or db_rw is not None, \
-            "Neither the config file or " + point_handler.name + \
-            " specfiy a access property for " + object_point_name
+        logic_rw = point_handler.get_point_access(point_handler_point_name)
+        if logic_rw is None and db_rw is None:
+            raise ConfigurationException(
+              f"Neither the config file or {point_handler.name} "
+              f"specfiy a access property for {point_handler_point_name}"
+            )
 
         if logic_rw is not None and db_rw is not None:
-            assert logic_rw == db_rw, \
-              " The config file and " + point_handler.name + \
-              " disagree on the r/w property for " + object_point_name
+            if logic_rw != db_rw:
+                raise ConfigurationException(
+                  f"The config file and {point_handler.name} "
+                  f"disagree on the r/w property for {point_handler_point_name}"
+              )
             rw = logic_rw
 
         elif db_rw is None:
@@ -186,7 +218,8 @@ class PointManager:
         else:
             rw = db_rw
 
-        obj_type = point_handler.get_point_type(object_point_name)
+        # get the
+        obj_type = point_handler.get_point_type(point_handler_point_name)
 
         if obj_type in (
           'PointAnalog',
@@ -198,8 +231,8 @@ class PointManager:
         ):
             if rw == 'rw':
                 point_handler.add_point(
-                  name=object_point_name,
-                  point=__get_point_rw(
+                  name=point_handler_point_name,
+                  point=PointManager().__get_point_rw(
                     point_name=database_point_name,
                     interruptable=interruptable,
                   ),
@@ -209,36 +242,36 @@ class PointManager:
 
             elif rw == 'ro':
                 point_handler.add_point(
-                  name=object_point_name,
-                  point=__get_point_ro(
+                  name=point_handler_point_name,
+                  point=PointManager().__get_point_ro(
                     point_name=database_point_name,
                   ),
                   access=rw,
                   extra_data=extra_data,
                 )
             else:
-                assert False, (
+                raise ConfigurationException(
                   f"Invalid read/write property of {rw} assigned to point "
-                  f"{object_point_name} of module {point_handler.name}"
+                  f"{point_handler_point_name} of module {point_handler.name}"
                 )
 
         elif 'Alarm' == obj_type:
             if 'rw' == rw:
-                point_handler.__dict__[object_point_name] = \
-                  __get_alarm_rw(
+                point_handler.__dict__[point_handler_point_name] = \
+                  PointManager().__get_alarm_rw(
                     alarm_name=database_point_name,
                     writer=interruptable,
                   )
 
             elif 'ro' == rw:
-                point_handler.__dict__[object_point_name] = \
-                  __get_alarm_ro(
+                point_handler.__dict__[point_handler_point_name] = \
+                  PointManager().__get_alarm_ro(
                     alarm_name=database_point_name,
                   )
             else:
                 assert False, (
                   f"Invalid read/write property of {rw} assigned to point "
-                  f"{object_point_name} of module {point_handler.name}"
+                  f"{point_handler_point_name} of module {point_handler.name}"
                 )
 
         elif obj_type == 'Primative':
@@ -254,25 +287,27 @@ class PointManager:
             if rw == 'rw':
                 point_handler.add_point(
                   name=database_point_name,
-                  point=__get_point_rw(
+                  point=PointManager().__get_point_rw(
                     point_name=database_point_name,
                     interruptable=interruptable,
                   ),
+                  extra_data=extra_data,
                   access='rw',
                 )
 
             elif rw == 'ro':
                 point_handler.add_point(
                   name=database_point_name,
-                  point=__get_point_ro(
+                  point=PointManager().__get_point_ro(
                     point_name=database_point_name,
                   ),
                   access='ro',
+                  extra_data=extra_data,
                 )
 
         else:
             assert False, point_handler.name + " attempted to assign point " + \
-              object_point_name + " with an invalid type of: " + obj_type
+              point_handler_point_name + " with an invalid type of: " + obj_type
 
     @staticmethod
     def assign_parameters(
@@ -323,43 +358,51 @@ class PointManager:
             else:
                 raise ValueError(f"process value name {name} is malformed.")
 
+    @staticmethod
+    def get_point_test(point_name: 'str'):
+        """ Used when creating test benches to retrieve points without all
+        of the dressing usually required
 
-def __get_point_rw(
-  point_name: 'str',
-  interruptable: 'Interruptable',
-) -> 'PointAbstract':
-    if 'None' != point_name:
-        p = PointManager().find_point(point_name).readwrite_object
-        assert isinstance(interruptable, Interruptable), (
-           f"Supplied writer ({str(type(interruptable))}) for point"
-           f"'{point_name}' is not an Interruptable")
-        p.writer = interruptable
-        return p
+        """
+        return PointManager().find_point(point_name).readwrite_object
 
+    @staticmethod
+    def __get_point_rw(
+      point_name: 'str',
+      interruptable: 'Interruptable',
+    ) -> 'PointAbstract':
+        if 'None' != point_name:
+            p = PointManager().find_point(point_name).readwrite_object
+            assert isinstance(interruptable, Interruptable), (
+              f"Supplied writer ({str(type(interruptable))}) for point"
+              f"'{point_name}' is not an Interruptable")
+            p.writer = interruptable
+            return p
 
-def __get_point_ro(point_name: 'str') -> 'PointReadOnly':
-    if 'None' != point_name:
-        return PointManager().find_point(point_name).readonly_object
+    @staticmethod
+    def __get_point_ro(point_name: 'str') -> 'PointReadOnly':
+        if 'None' != point_name:
+            return PointManager().find_point(point_name).readonly_object
 
+    @staticmethod
+    def __get_process_ro(point_name: 'str') -> 'ProcessValue':
+        if 'None' != point_name:
+            return PointManager().find_point(point_name).readonly_object
 
-def __get_process_ro(point_name: 'str') -> 'ProcessValue':
-    if 'None' != point_name:
-        return PointManager().find_point(point_name).readonly_object
+    @staticmethod
+    def __get_alarm_rw(
+    alarm_name: 'str',
+    writer: 'SupervisedThread') -> 'Alarm':
+        if 'None' != alarm_name:
+            assert isinstance(writer, SupervisedThread), (
+                f"Supplied writer ({str(type(writer))}) for point "
+                f"'{alarm_name}' is not a SupervisedThread"
+            )
+            a = GLOBAL_ALARMS[alarm_name]
+            a.writer = writer
+            return GLOBAL_ALARMS[alarm_name]
 
-
-def __get_alarm_rw(
-  alarm_name: 'str',
-  writer: 'SupervisedThread') -> 'Alarm':
-    if 'None' != alarm_name:
-        assert isinstance(writer, SupervisedThread), (
-           f"Supplied writer ({str(type(writer))}) for point '{alarm_name}' "
-           f"is not a SupervisedThread"
-        )
-        a = GLOBAL_ALARMS[alarm_name]
-        a.writer = writer
-        return GLOBAL_ALARMS[alarm_name]
-
-
-def __get_alarm_ro(alarm_name: 'str') -> 'Alarm':
-    if 'None' != alarm_name:
-        return GLOBAL_ALARMS[alarm_name]
+    @staticmethod
+    def __get_alarm_ro(alarm_name: 'str') -> 'Alarm':
+        if 'None' != alarm_name:
+            return GLOBAL_ALARMS[alarm_name]

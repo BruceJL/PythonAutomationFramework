@@ -1,23 +1,30 @@
 import datetime
 from pyAutomation.Supervisory.SupervisedThread import SupervisedThread
-from pyAutomation.Supervisory.PointHandler import PointHandler
+from pyAutomation.Supervisory.PointHandlerLogic import PointHandlerLogic
 from InductiveLoad import InductiveLoad
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pyAutomation.DataObjects.ProcessValue import ProcessValue
+    from pyAutomation.DataObjects.PointDiscrete import PointDiscrete
+    from pyAutomation.DataObjects.Alarm import Alarm
 
 
-# simple pump controller that runs two pumps in a lead-lag configuration
+class PumpController(SupervisedThread, PointHandlerLogic):
+    '''simple pump controller that runs two pumps in a lead-lag configuration
 
-class PumpController(SupervisedThread, PointHandler):
+    '''
 
-    point_liquid_level = None
-    point_run_pump_1 = None
-    alarm_pump_runtime_fault = None
-    point_run_pump_2 = None
+    point_liquid_level = None  # type: ProcessValue
+    point_run_pump_1 = None  # type: ProcessValue
+    alarm_pump_runtime_fault = None  # type: Alarm
+    point_run_pump_2 = None  # type: PointDiscrete
 
     _points_list = {
-      'point_liquid_level':          {'type': 'ProcessValue',  'access': 'ro'},
-      'point_run_pump_1':            {'type': 'PointDiscrete', 'access': 'rw'},
-      'alarm_pump_runtime_fault':    {'type': 'Alarm',         'access': 'rw'},
-      'point_run_pump_2':            {'type': 'PointDiscrete', 'access': 'rw'},
+      'point_liquid_level': {'type': 'ProcessValue', 'access': 'ro'},
+      'point_run_pump_1': {'type': 'PointDiscrete', 'access': 'rw'},
+      'alarm_pump_runtime_fault': {'type': 'Alarm', 'access': 'rw'},
+      'point_run_pump_2': {'type': 'PointDiscrete', 'access': 'rw'},
     }
 
     def __init__(self, name, logger):
@@ -57,16 +64,18 @@ class PumpController(SupervisedThread, PointHandler):
         # register interest in points that will cause the routine to run.
         self.point_liquid_level.add_observer(self.name, self.interrupt)
         self.alarm_pump_runtime_fault.add_observer(self.name, self.interrupt)
-        self.point_liquid_level.alarms['H2'].add_observer(self.name, self.interrupt)
+        self.point_liquid_level.alarms['H2'].add_observer(
+          self.name, self.interrupt)
 
     def loop(self) -> float:
         # --------------------------------------------------
         # Pump run routine
         # --------------------------------------------------
 
-        sleep_time = None  # The default sleep time is to run from only point
-                           # value interrupts.
+        # The default sleep time is to run from only point
+        # value interrupts.
 
+        sleep_time = None
         # --------------------------------------------------
         # Failsafe logic
         # Put the pump system into failsafe mode if:
@@ -75,14 +84,16 @@ class PumpController(SupervisedThread, PointHandler):
         #   - the pump has been running too long.
         if not self.point_liquid_level.quality:
             self.state = "OFFLINE"
-            self.logger.warning("LIQUID LEVEL SENSOR FAILURE, PUMP CONTROL DISABLED.")
+            self.logger.warning("LIQUID LEVEL SENSOR FAILURE, "
+              "PUMP CONTROL DISABLED.")
             self.primary_pump.run(False)
             self.backup_pump.run(False)
 
         if self.state == "OFFLINE" \
           and self.point_liquid_level.quality:
             self.state = "IDLE"
-            self.logger.warning("LIQUID LEVEL SENSOR RESTORED. PUMP CONTROL ENABLED.")
+            self.logger.warning("LIQUID LEVEL SENSOR RESTORED. "
+              "PUMP CONTROL ENABLED.")
 
         if self.state == "IDLE"\
           and self.point_liquid_level.value \
@@ -102,7 +113,8 @@ class PumpController(SupervisedThread, PointHandler):
         if self.state == "RUN_PRIMARY_PUMP" \
           or self.state == "RUN_BACKUP_PUMP":
 
-            if self.timer + datetime.timedelta(seconds=5) < datetime.datetime.now():
+            if self.timer + datetime.timedelta(seconds=5) < \
+              datetime.datetime.now():
                 if self.point_liquid_level.value > self.last_level:
                     self.alarm_pump_runtime_fault.input = True
                 else:
@@ -125,6 +137,12 @@ class PumpController(SupervisedThread, PointHandler):
 
         primary_sleep_time = self.primary_pump.evaluate()
         backup_sleep_time = self.backup_pump.evaluate()
-        sleep_time = super().get_lowest_sleep_time(primary_sleep_time, sleep_time)
-        sleep_time = super().get_lowest_sleep_time(backup_sleep_time, sleep_time)
+        sleep_time = super().get_lowest_sleep_time(
+           primary_sleep_time,
+           sleep_time,
+        )
+        sleep_time = super().get_lowest_sleep_time(
+          backup_sleep_time,
+          sleep_time,
+        )
         return sleep_time

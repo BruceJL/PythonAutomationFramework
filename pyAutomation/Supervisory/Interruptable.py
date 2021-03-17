@@ -8,7 +8,12 @@ class Interruptable(ABC):
     def interrupt(self, name: 'str', reason: 'Any') -> 'None':
         pass
 
-    @abstractmethod
+
     @property
+    @abstractmethod
     def name(self) -> 'str':
+        pass
+
+    @name.setter
+    def name(self, name) -> 'None':
         pass

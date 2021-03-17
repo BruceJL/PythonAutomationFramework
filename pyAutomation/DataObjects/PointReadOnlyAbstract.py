@@ -34,6 +34,7 @@ class PointReadOnlyAbstract(Observable, ABC):
         pass
 
     @property
+    @abstractmethod
     def hmi_writeable(self) -> 'bool':
         pass
 

@@ -2,21 +2,35 @@ from datetime import timedelta
 import asyncio
 import socket
 
-from pyAutomation.DataObjects.PointAnalogReadOnlyAbstract import \
-  valid_data_types
 from pyAutomation.Supervisory.SupervisedThread import SupervisedThread
 from pyAutomation.Supervisory.PointHandler import PointHandler
+from pyAutomation.Supervisory.ConfigurationException \
+  import ConfigurationException
+
+from pyAutomation.DataObjects.PointAnalogReadOnlyAbstract import \
+  data_formats
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import List, Dict, Optional
+    from typing import List, Dict, Optional, Any
     from pyAutomation.PointAbstract import PointAbstract
+
+valid_commands = [
+  'COIL',
+  'DISCRETE',
+  'HOLDING',
+  'INPUT',
+]
+
+data_formats.extend(['bit', 'bit-in-word'])
 
 
 class ModbusServer(SupervisedThread, PointHandler):
     """Provides a Modbus server to provide visibility of point database
-    quantities to remote Modbus clients."""
+    quantities to remote Modbus clients.
+
+    """
 
     parameters = {
       'endpoint_address': 'string',
@@ -25,12 +39,12 @@ class ModbusServer(SupervisedThread, PointHandler):
     }
 
     # mapping is drop, command, address
-    point_mapping = {}  # type: Dict[int, Dict[int, Dict[int, PointAbstract]]]
+    point_mapping = {}  # type: Dict[Any, Any]
 
     # data types are used to interpret the data in HOLDING (03) or INPUT (04)
     # registers. COIL (01) and DISCRETE (02) registers are always bits.
 
-    _valid_data_types = 'sub-bit' + valid_data_types  # type: List
+    _points_list = None
 
     def __init__(self, name, logger):
         self.sock = None
@@ -48,10 +62,16 @@ class ModbusServer(SupervisedThread, PointHandler):
 
         self.logger.debug("Entering function")
 
-        asyncio.start_server(
+    # SupervisedThread manditory override
+    def config(self, data: 'dict') -> 'None':
+        """ Fires up the I/O co-routine."""
+        asyncio.run(self.run_server('0.0.0.0', 5000))
+
+    async def run_server(self, host, port) -> 'None':
+        server = await asyncio.start_server(
           self.do_io,
-          host=None,
-          port=None,
+          host=host,
+          port=port,
           # loop=None,
           limit=None,
           family=socket.AF_UNSPEC,
@@ -64,10 +84,11 @@ class ModbusServer(SupervisedThread, PointHandler):
           ssl_handshake_timeout=None,
           start_serving=True,
         )
+        server.serve_forever()
 
-    # SupervisedThread manditory override
-    def config(self, data: 'dict') -> 'None':
-        """ Fires up the I/O co-routine."""
+    def interrupt(self, name: 'str', reason: 'Any') -> 'None':
+        # A modbus server doesn't ever push information to clients, so we can
+        # safely pass on doing any interrupting.
         pass
 
     async def do_io(
@@ -79,7 +100,7 @@ class ModbusServer(SupervisedThread, PointHandler):
         data  = None  # type: bytearray  # type: ignore
         # Wait on incoming data.
         data = bytearray(await reader.read(5))
-        message_length = __from_bytes(data[4:5])
+        message_length = self.__from_bytes(data[4:5])
 
         # wait for the remainder of the data from the buffer
         data.extend(bytearray(await reader.read(message_length)))
@@ -94,12 +115,13 @@ class ModbusServer(SupervisedThread, PointHandler):
     def process_request(self, data: 'bytearray') -> 'bytearray':
         # populate additional fields.
         reply_data_length = 0  # type: int
-        transaction_id = data[0:1]
-        protocol_id = data[2:3]
-        unit_identifier = data[0]
-        function_code = data[1]
-        starting_address = __from_bytes(data[2:3])
-        payload_data = __from_bytes(data[4:5])
+        transaction_id = data[0:2]  # copies index 0 and 1.
+        protocol_id = data[2:4]
+        # the length of the inbound packet is in index 4 and 5
+        unit_identifier = data[6]
+        function_code = data[7]
+        starting_address = self.__from_bytes(data[8:10])
+        payload_data = self.__from_bytes(data[10:12])
 
         if   function_code == 0x01 \
           or function_code == 0x05 \
@@ -108,27 +130,30 @@ class ModbusServer(SupervisedThread, PointHandler):
         else:
             reply_data_length = payload_data * 2
 
-        reply_data = bytearray(reply_data_length + 9)
-        reply_data[0:1] = transaction_id
-        reply_data[2:3] = protocol_id
-        # data legnth is the length of the data in bytes + 1 byte for the
+        packet_length = reply_data_length + 9
+        reply_data = bytearray(9)
+
+        # Build the MBAP header
+        reply_data[0:2] = transaction_id
+        reply_data[2:4] = protocol_id
+        # data length is the length of the data in bytes + 1 byte for the
         # command byte and another byte for the unit identifier
-        reply_data[4:5] = \
-          (reply_data_length + 2).to_bytes(2, byteorder='little', signed=False)
+        reply_data[4:6] = \
+          (packet_length - 6).to_bytes(2, byteorder='big', signed=False)
         reply_data[6] = unit_identifier
         reply_data[7] = function_code
-        reply_data[8] = \
-          (reply_data_length).to_bytes(1, byteorder='little', signed=False)
+        reply_data[8] = reply_data_length
 
         if function_code == 0x01:
             # Read coil status (0x reference address)
 
+            byte = int(0)
             for i in range(0, payload_data):
-                byte = int(0)
+
                 try:
                     point = self.point_mapping\
                       [unit_identifier]\
-                      [function_code]\
+                      ['COIL']\
                       [starting_address + i]\
                       ['point']
 
@@ -136,13 +161,14 @@ class ModbusServer(SupervisedThread, PointHandler):
                         mask = 1 << i
                         byte = byte | mask
 
-                    if i + 1 % 8 == 0 or i - 1 == payload_data:
-                        reply_data[9 + (i % 8)] = \
-                          byte.to_bytes(1, byteorder='little', signed=False)
-                        byte = 0
-
                 except KeyError:
                     pass
+
+                # move the byte into the reply data array if this is the
+                # last item in the array, or we need to start a new byte.
+                if i + 1 % 8 == 0 or i == payload_data - 1:
+                    reply_data.append(byte)
+                    byte = 0
 
         elif function_code == 0x03 or function_code == 0x04:
             # Read Holding Registers (function code 0x03 - 4x reference address)
@@ -151,18 +177,24 @@ class ModbusServer(SupervisedThread, PointHandler):
 
             # bit in words are dealt with by making fake 'points' that
             # return the correct data.
+
+            if function_code == 0x03:
+                register_type = "HOLDING"
+            elif function_code == 0x04:
+                register_type = "INPUT"
+
             i = 0
             while i < reply_data_length:
                 try:
                     point = self.point_mapping\
                       [unit_identifier]\
-                      [function_code]\
+                      [register_type]\
                       [starting_address + i]\
                       ['point']
 
                     data_type = self.point_mapping\
                       [unit_identifier]\
-                      [function_code]\
+                      [register_type]\
                       [starting_address + i]\
                       ['data_type']
 
@@ -176,7 +208,7 @@ class ModbusServer(SupervisedThread, PointHandler):
                     # return data to download the entire data structure.
                     # return an 'Illegal Data address' error (Code 02)
                     if i >= reply_data_length:
-                        reply_data = __make_error_response(data, 0x02)
+                        reply_data = self.__make_error_response(data, 0x02)
 
                 except KeyError:
                     if i == 0:
@@ -185,7 +217,7 @@ class ModbusServer(SupervisedThread, PointHandler):
                         # idea as changes to the data table may break client
                         # behaviour. Whatever! That's what you get for using
                         # Modbus!
-                        reply_data = __make_error_response(data, 0x02)
+                        reply_data = self.__make_error_response(data, 0x02)
                         i = reply_data_length  # exit the while loop
                     else:
                         i += 1
@@ -201,7 +233,7 @@ class ModbusServer(SupervisedThread, PointHandler):
 
                 if point.readonly:
                     # attempted to write to a read only point.
-                    reply_data = __make_error_response(data, 0x02)
+                    reply_data = self.__make_error_response(data, 0x02)
 
                 elif payload_data == 0xFF00:
                     point.value = True
@@ -211,12 +243,12 @@ class ModbusServer(SupervisedThread, PointHandler):
 
                 else:
                     # The client didn't supply a valid payload
-                    reply_data = __make_error_response(data, 0x02)
+                    reply_data = self.__make_error_response(data, 0x02)
 
             except KeyError:
                 # address is invalid, fail the command with a 'illegal data
                 # address' error!
-                reply_data = __make_error_response(data, 0x02)
+                reply_data = self.__make_error_response(data, 0x02)
 
         elif function_code == 0x06:
             # Preset Single Register (4x reference address) (16 bits)
@@ -235,7 +267,7 @@ class ModbusServer(SupervisedThread, PointHandler):
 
                 if point.readonly:
                     # attempted to write to a read only point.
-                    reply_data = __make_error_response(data, 0x02)
+                    reply_data = self.__make_error_response(data, 0x02)
 
                 elif point.datatype_length_bytes == 2:
                     point.decode_datatype(
@@ -247,12 +279,12 @@ class ModbusServer(SupervisedThread, PointHandler):
 
                 else:
                     # attempted to write 2 bytes to a 4 byte data type.
-                    reply_data = __make_error_response(data, 0x02)
+                    reply_data = self.__make_error_response(data, 0x02)
 
             except KeyError:
                 # address is invalid, fail the command with a 'illegal data
                 # address' error!
-                reply_data = __make_error_response(data, 0x02)
+                reply_data = self.__make_error_response(data, 0x02)
 
         elif function_code == 0x15:
             # Force Multiple coils (0x reference address)
@@ -264,27 +296,27 @@ class ModbusServer(SupervisedThread, PointHandler):
                 if byte_count != int(payload_data / 8) + 1:
                     # the amount of force data supplied doesn't match up with
                     # the number of coils to force.
-                    reply_data = __make_error_response(data, 0x02)
+                    reply_data = self.__make_error_response(data, 0x02)
 
                 else:
                     for i in range(0, payload_data):
                         point = self.point_mapping\
                           [unit_identifier]\
-                          [0x01]\
+                          ['COIL']\
                           [starting_address + i]\
                           ['point']
 
                         if point.readonly:
                             # Trying to write to a readonly point.
                             # throw an illegal data address (Code 02)
-                            reply_data = __make_error_response(data, 0x02)
+                            reply_data = self.__make_error_response(data, 0x02)
                             break
 
                     # all the points checked out. Proceed with the write.
                     for i in range(0, payload_data):
                         point = self.point_mapping\
                           [unit_identifier]\
-                          [0x01]\
+                          ['COIL']\
                           [starting_address + i]\
                           ['point']
 
@@ -301,7 +333,7 @@ class ModbusServer(SupervisedThread, PointHandler):
             except KeyError:
                 # address is invalid, fail the command with a 'illegal data
                 # address' error!
-                reply_data = __make_error_response(data, 0x02)
+                reply_data = self._make_error_response(data, 0x02)
 
         elif function_code == 0x16:
             # Force Multiple holding registers (04 reference address - command
@@ -312,31 +344,31 @@ class ModbusServer(SupervisedThread, PointHandler):
                 if len(preset_data) != int(payload_data * 2):
                     # the amount of force data supplied doesn't match up with
                     # the number of coils to force.
-                    reply_data = __make_error_response(data, 0x02)
+                    reply_data = self.__make_error_response(data, 0x02)
                 else:
                     for i in range(0, payload_data):
                         point = self.point_mapping\
                           [unit_identifier]\
-                          [0x03]\
+                          ['HOLDING']\
                           [starting_address + i]\
                           ['point']
 
                         if point.readonly is True:
                             # Trying to write to a readonly point.
                             # throw an illegal data address (Code 02)
-                            reply_data = __make_error_response(data, 0x02)
+                            reply_data = self.__make_error_response(data, 0x02)
                             break
 
                     for i in range(0, payload_data):
                         point = self.point_mapping\
                           [unit_identifier]\
-                          [0x03]\
+                          ['HOLDING']\
                           [starting_address + i]\
                           ['point']
 
                         data_type = self.point_mapping\
                           [unit_identifier]\
-                          [0x03]\
+                          ['HOLDING']\
                           [starting_address + i]\
                           ['data_type']
 
@@ -349,11 +381,11 @@ class ModbusServer(SupervisedThread, PointHandler):
             except KeyError:
                 # address is invalid, fail the command with a 'illegal data
                 # address' error!
-                reply_data = __make_error_response(data, 0x02)
+                reply_data = self.__make_error_response(data, 0x02)
 
         else:
             # return an illegal function exception (Code 01)
-            reply_data = __make_error_response(data, 0x01)
+            reply_data = self.__make_error_response(data, 0x01)
         return reply_data
 
     # SupervisedThread manditory override.
@@ -377,6 +409,10 @@ class ModbusServer(SupervisedThread, PointHandler):
         return None
 
     # PointHandler override
+    def get_point_type(self, name: 'str') -> 'str':
+        return 'Primative'
+
+    # PointHandler override
     def add_point(
       self,
       name: 'str',
@@ -391,72 +427,171 @@ class ModbusServer(SupervisedThread, PointHandler):
           extra_data=extra_data,
         )
 
-        # Check the command field
-        assert 'command' in extra_data, (
-          f"Point {name} is missing a command type for Modbus client "
-          f"{self.name}"
-        )
+        failures = []  # type: List[str]
 
-        assert extra_data['command'] in self.valid_commands, (
-          f"Point {name} has an invalid command type of "
-          f"{extra_data['command']} Modbus client {self.name}"
-        )
+        # Check the command field
+        if 'command' not in extra_data:
+            failures.append(
+              f"Point {name} is missing a command type for Modbus client "
+              f"{self.name}"
+            )
+
+        elif extra_data['command'] not in valid_commands:
+            failures.append(
+              f"Point {name} has an invalid command type of "
+              f"{extra_data['command']} Modbus client {self.name}"
+            )
 
         # Check the address field
-        assert 'address' in extra_data, (
-          f"Point {name} is missing an address for Modbus client {self.name}")
+        if 'address' not in extra_data:
+            failures.append(
+              f"Point {name} is missing an address for Modbus client "
+              f"{self.name}"
+            )
 
-        assert extra_data['address'].isnumeric(), (
-          f"Point {extra_data['command']} address is not numeric")
-
-        assert int(extra_data['address']) >= 0 and \
-          int(extra_data['address']) <= 15, (
-            f"Point {extra_data['command']} bit address is not between 0 and 15"
-        )
+        elif not isinstance(extra_data['address'], int):
+            failures.append(
+              f"Point {name} has an address of '{extra_data['address']}', "
+              f"which is not a numeric address."
+            )
 
         # Check the datatype field.
-        assert 'datatype' in extra_data, (
-          f"Point {name} is missing a datatype for Modbus client {self.name}")
+        if 'data_format' not in extra_data:
+            failures.append(
+              f"Point {name} is missing a data_format."
+            )
 
         # verify that the datatype entry is valid.
-        assert extra_data['datatype'] in valid_data_types, (
-          f"Point {name} does not have a valid datatype listed.")
+        elif extra_data['data_format'] not in data_formats:
+            failures.append(
+              f"Point {name} has an invalid datatype of "
+              f"{extra_data['data_format']}."
+            )
 
         # Check the drop field.
-        assert 'drop' in extra_data, (
-          f"Point {name} is missing a drop number for Modbus "
-          f"client {self.name}")
+        if 'drop' not in extra_data:
+            failures.append(
+              f"Point {name} is missing a drop number for Modbus "
+              f"client {self.name}."
+            )
 
-        assert extra_data['drop'].isnumeric(), (
-          f"Point {extra_data['command']} command is not numeric")
+        elif not isinstance(extra_data['drop'], int):
+            failures.append(
+              f"Point {name} drop number '{extra_data['drop']}' is not numeric."
+            )
 
-        self.point_mapping \
-          [int(extra_data['drop'])] \
-          [int(extra_data['command'])] \
-          [int(extra_data['address'])] = \
-            {
-              'point': point,
-              'data_type': extra_data['datatype'],
-            }
+        if 'bit' in extra_data:
+            if not (int(extra_data['bit']) >= 0
+              and int(extra_data['bit']) <= 15):
+                failures.append(
+                  f"Point {extra_data['name']} bit address is not between "
+                  f"0 and 15. It's {extra_data['bit']}."
+                )
 
+        if len(failures) > 0:
+            raise ConfigurationException(failures)
+        else:
+            if extra_data['data_format'] == 'bit-in-word':
+                p = self.check_mapping([
+                  extra_data['drop'],
+                  extra_data['command'],
+                  extra_data['address'],
+                  extra_data['bit'],
+                ])
 
-def __from_bytes(data: 'bytearray') -> 'int':
-    return int.from_bytes(data, byteorder='little', signed=False)
+                if p is not None:
+                    failures.append(
+                      f"point {name} is being assinged to an address of "
+                      f"drop:{extra_data['drop']}, "
+                      f"command: {extra_data['command']}, "
+                      f"register: {extra_data['address']}, "
+                      f"register: {extra_data['bit']} "
+                      f"but that address is."
+                      f"already assigned to {p.name}"
+                    )
+                    raise ConfigurationException(failures)
 
+                self.add_mapping(
+                  address = [
+                    extra_data['drop'],
+                    extra_data['command'],
+                    extra_data['address'],
+                    extra_data['bit'],
+                  ],
+                  point = point,
+                  data_format = extra_data['data_format'],
+                )
 
-def __make_error_response(data: 'bytes', code: 'int') -> 'bytearray':
-    # In a normal response, the slave simply echoes the function code of
-    # the original query in the function field of the response.  All
-    # function codes have their most-significant bit (msb) set to 0
-    # (their values are below 80H).  In an exception response, the slave
-    # sets the msb of the function code to 1 in the returned response
-    # (i.e. exactly 80H higher than normal) and returns the exception
-    # code in the data field.  This is used by the client/master
-    # application to actually recognize an exception response and to
-    # direct an examination of the data field for the applicable
-    # exception code.
-    reply_data = bytearray(9)
-    reply_data[0:6] = data[0:6]
-    reply_data[7] = data[7] + 0x80
-    reply_data[8] = code  # illegal function
-    return reply_data
+            else:
+                p = self.check_mapping([
+                  extra_data['drop'],
+                  extra_data['command'],
+                  extra_data['address'],
+                ])
+
+                if p is not None:
+                    failures.append(
+                      f"point {name} is being assinged to an address of "
+                      f"drop:{extra_data['drop']}, "
+                      f"command: {extra_data['command']}, "
+                      f"register: {extra_data['address']}, but that address is."
+                      f"already assigned to {p.name}"
+                    )
+                    raise ConfigurationException(failures)
+
+                self.add_mapping(
+                  address = [
+                    extra_data['drop'],
+                    extra_data['command'],
+                    extra_data['address'],
+                  ],
+                  point = point,
+                  data_format = extra_data['data_format'],
+                )
+
+    def add_mapping(
+      self,
+      address: 'List[str]',
+      point,
+      data_format: 'str'
+    ) -> None:
+        current_map = self.point_mapping
+        for level in address:
+            if level not in current_map:
+                current_map[level] = {}
+            current_map = current_map[level]
+        current_map['point'] = point
+        current_map['data_format'] = data_format
+
+    def check_mapping(
+      self,
+      address: 'List[str]'
+    ):
+        current_map = self.point_mapping
+        for level in address:
+            if level not in current_map:
+                return None
+            current_map = current_map[level]
+        return current_map
+
+    @staticmethod
+    def __from_bytes(data: 'bytearray') -> 'int':
+        return int.from_bytes(data, byteorder='big', signed=False)
+
+    @staticmethod
+    def __make_error_response(data: 'bytes', code: 'int') -> 'bytearray':
+        # In a normal response, the slave simply echoes the function code of
+        # the original query in the function field of the response.  All
+        # function codes have their most-significant bit (msb) set to 0
+        # (their values are below 80H).  In an exception response, the slave
+        # sets the msb of the function code to 1 in the returned response
+        # (i.e. exactly 80H higher than normal) and returns the exception
+        # code in the data field.  This is used by the client/master
+        # application to actually recognize an exception response and to
+        # direct an examination of the data field for the applicable
+        # exception code.
+        reply_data = bytearray(9)
+        reply_data[0:6] = data[0:6]
+        reply_data[7] = data[7] + 0x80
+        reply_data[8] = code  # illegal function
+        return reply_data
